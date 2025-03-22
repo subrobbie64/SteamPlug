@@ -1,4 +1,5 @@
 #include "ButtplugDevice.h"
+#include <algorithm>
 
 #pragma comment (lib, "WclBluetoothFramework.lib")
 #pragma comment(lib, "Ws2_32.lib")
@@ -9,8 +10,7 @@ ButtplugDevice::ButtplugDevice(BtAddress address, const ButtplugDeviceDefinition
 	__hook(&CwclGattClient::OnCharacteristicChanged, &_wclGattClient,
 		&ButtplugDevice::wclGattClientCharacteristicChanged);
 
-	_batteryCallback = NULL;
-	_batteryCallbackArg = NULL;
+	_batteryListener = NULL;
 
 	_wclBluetoothManager.SetMessageProcessing(mpAsync);
 	int res = _wclBluetoothManager.Open();
@@ -109,8 +109,8 @@ void ButtplugDevice::wclGattClientCharacteristicChanged(void* Sender, const unsi
 		System::SetEvent(_connectedEvent);
 	} else if (isdigit(Value[0]) && (Length <= 4)) {
 		int batteryLevel = atoi(str.c_str());
-		if (_batteryCallback != NULL)
-			_batteryCallback(_batteryCallbackArg, batteryLevel);
+		if (_batteryListener != NULL)
+			_batteryListener->onBatteryLevelReceived(batteryLevel);
 	} else
 		debug("Unknown response! (Length = %d): %s\n", Length, str.c_str());
 }
@@ -119,7 +119,8 @@ void ButtplugDevice::setVibrate(int percentage) {
 	if (_status != BP_CONNECTED)
 		return;
 	static char commandBuffer[64];
-	sprintf(commandBuffer, "Vibrate:%d;", percentage);
+	int vibrateSetting = std::clamp((percentage * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
+	sprintf(commandBuffer, "Vibrate:%d;", vibrateSetting);
 	issueCommand(commandBuffer);
 }
 
@@ -131,6 +132,7 @@ bool ButtplugDevice::readBatteryLevel() {
 
 void ButtplugDevice::waitForConnection() {
 	System::WaitEvent(_connectedEvent);
+	log("okay!\n");
 }
 
 BPStatus ButtplugDevice::checkConnectionStatus() {
@@ -143,8 +145,8 @@ BPStatus ButtplugDevice::checkConnectionStatus() {
 	return _status;
 }
 
-void ButtplugDevice::setBatteryCallback(BatteryCallback callback, void* arg) {
-	_batteryCallback = callback;
-	_batteryCallbackArg = arg;
+void ButtplugDevice::setBatteryListener(BatteryListener *listener) {
+	_batteryListener = listener;
 }
 
+const int ButtplugDevice::MAX_VIBRATION_SETTING = 20;

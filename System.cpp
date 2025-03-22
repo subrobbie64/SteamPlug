@@ -72,8 +72,10 @@ void printXy(int x, int y, Color color, const char* str, ...) {
 	if ((x <= 0) || (y <= 0)) {
 		int w, h;
 		getTerminalSize(&w, &h);
-		if (x <= 0)
+		if (x == 0)
 			x = (w - strLen) / 2 + 1;
+		else
+			x = w - strLen + 1;
 		if (y <= 0)
 			y = h / 2 + 1;
 		printf("\033[%d;%dH", y, x);

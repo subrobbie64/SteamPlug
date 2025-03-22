@@ -1,25 +1,11 @@
 #pragma once
 
-#ifdef _MSC_VER
 #include <Windows.h>
 typedef void* systhread_t;
 typedef HANDLE syssema_t;
 typedef unsigned int threadReturn;
 #define THREAD_RETURN 0
 #define SEMA_TIMEOUT WAIT_TIMEOUT
-#else
-#include <pthread.h>
-#include <semaphore.h>
-#include <time.h>
-typedef sem_t syssema_t;
-//typedef pthread_t systhread_t;
-typedef void* systhread_t;
-typedef void* threadReturn;
-#define WINAPI
-#define THREAD_RETURN NULL
-#define SEMA_TIMEOUT 0x7F017F01
-#endif
-
 typedef HANDLE sysevent_t;
 
 typedef threadReturn(WINAPI* ThreadFunc)(void* arg);

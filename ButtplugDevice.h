@@ -1,18 +1,20 @@
 #pragma once
 #include "ButtplugDiscovery.h"
 
-typedef void (*BatteryCallback)(void *arg, int batteryLevel);
-
 enum BPStatus {
 	BP_CONNECTING,
 	BP_CONNECTED,
 	BP_DISCONNECTED,
 };
 
+class BatteryListener {
+public:
+	virtual void onBatteryLevelReceived(int batteryLevel) = 0;
+};
+
 class ButtplugDevice {
 public:
 	ButtplugDevice(BtAddress address, const ButtplugDeviceDefinition* definition);
-	void setBatteryCallback(BatteryCallback callback, void* arg);
 
 	void connect();
 	void waitForConnection();
@@ -20,6 +22,8 @@ public:
 
 	void setVibrate(int percentage);
 	bool readBatteryLevel();
+
+	void setBatteryListener(BatteryListener* listener);
 private:
 	void wclGattClientConnect(void* Sender, const int Error);
 	void wclGattClientDisconnect(void* Sender, const int Reason);
@@ -37,11 +41,12 @@ private:
 	wclGattService _buttplugService;
 	wclGattCharacteristic _txCharac, _rxCharac;
 
-	BatteryCallback _batteryCallback;
-	void* _batteryCallbackArg;
+	BatteryListener* _batteryListener;
 
 	sysevent_t _connectedEvent;
 	syssema_t _runningCommand;
 
 	const ButtplugDeviceDefinition* _definition;
+
+	static const int MAX_VIBRATION_SETTING;
 };

@@ -7,7 +7,7 @@ std::string Mac2String(BtAddress Address) {
 	return std::string(macAddress);
 }
 
-ButtplugDiscovery::ButtplugDiscovery() : _discoveredHushDevice(0), _discoveredHushDeviceType(0), _inspectedDeviceNumber(-1) {
+ButtplugDiscovery::ButtplugDiscovery() : _discoveredHushDevice(0), _discoveredHushDeviceType(0) {
 	__hook(&CwclBluetoothManager::OnDeviceFound, &_wclBluetoothManager,
 		&ButtplugDiscovery::wclBluetoothManagerDeviceFound);
 	__hook(&CwclBluetoothManager::OnDiscoveringCompleted, &_wclBluetoothManager,
@@ -28,11 +28,7 @@ ButtplugDiscovery::ButtplugDiscovery() : _discoveredHushDevice(0), _discoveredHu
 
 }
 
-void ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted(void* Sender, CwclBluetoothRadio* const Radio)
-{
-	UNREFERENCED_PARAMETER(Sender);
-	UNREFERENCED_PARAMETER(Radio);
-
+void ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted(void* Sender, CwclBluetoothRadio* const Radio) {
 	_discoveredHushDevice = 0;
 	_discoveredHushDeviceType = -1;
 
@@ -40,11 +36,7 @@ void ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted(void* Sender, Cwcl
 	log("Starting Bluetooth Discovery...\n");
 }
 
-void ButtplugDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio,
-	const __int64 Address)
-{
-	UNREFERENCED_PARAMETER(Sender);
-
+void ButtplugDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio, const __int64 Address) {
 	std::string macAddressStr = Mac2String(Address);
 	wclBluetoothDeviceType DevType = dtMixed;
 	int Res = Radio->GetRemoteDeviceType(Address, DevType);
@@ -56,59 +48,6 @@ void ButtplugDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoo
 		log("Found device %s\n", macAddressStr.c_str());
 		_discoveredDevices.push_back(Address);
 	}
-}
-
-int ButtplugDiscovery::getHushDeviceType(BtAddress address, wclGattServices &services) {
-	for (wclGattServices::iterator i = services.begin(); i != services.end(); i++) {
-		wclGattService Service = (*i);
-		if (Service.Uuid.IsShortUuid)
-			continue;
-
-		for (int j = 0; j < NUM_HUSH_DEVICES; j++) {
-			if (!memcmp(&Service.Uuid.LongUuid, &HUSH_DEVICE[j].serviceId.LongUuid, sizeof(GUID)))
-				return j;
-		}
-	}
-	return -1;
-}
-
-void ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted(void* Sender, CwclBluetoothRadio* const Radio,
-	const int Error)
-{
-	UNREFERENCED_PARAMETER(Sender);
-	UNREFERENCED_PARAMETER(Error);
-
-	if (Error != WCL_E_SUCCESS)
-		error("\nDiscovery completed with error 0x%X!\n", Error);
-	else
-		log("\nDiscovery completed.\n\n\n", Error);
-
-	if (_discoveredDevices.empty())
-		error("No BLE devices found!\n");
-
-	_inspectedDeviceNumber = -1;
-	inspectNextDevice();
-}
-
-void ButtplugDiscovery::inspectNextDevice() {
-	_inspectedDeviceNumber++;
-	if (_inspectedDeviceNumber >= (int)_discoveredDevices.size()) {
-		log("\nInspecting devices complete\n");
-		System::SetEvent(_discoveryCompletedEvent);
-		return;
-	}
-
-	CwclBluetoothRadio* Radio;
-	int Res = _wclBluetoothManager.GetLeRadio(Radio);
-	if (Res != WCL_E_SUCCESS)
-		error("Unable to get BT radio instance, error 0x%X!\n", Res);
-
-	_wclGattClient.Address = _discoveredDevices.at(_inspectedDeviceNumber);
-	_wclGattClient.ConnectOnRead = true;
-	_wclGattClient.ForceNotifications = false;
-	Res =_wclGattClient.Connect(Radio);
-	if (Res != WCL_E_SUCCESS)
-		log("Connect error 0x%X\n", Res);
 }
 
 bool ButtplugDiscovery::runDiscovery() {
@@ -125,6 +64,40 @@ bool ButtplugDiscovery::runDiscovery() {
 
 	System::WaitEvent(_discoveryCompletedEvent);
 	return _discoveredHushDevice != 0;
+}
+
+void ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted(void* Sender, CwclBluetoothRadio* const Radio, const int Error) {
+	if (Error != WCL_E_SUCCESS)
+		error("\nDiscovery completed with error 0x%X!\n", Error);
+	else
+		log("\nDiscovery completed.\n\n\n", Error);
+
+	if (_discoveredDevices.empty())
+		error("No devices found!\n");
+
+	inspectNextDevice();
+}
+
+void ButtplugDiscovery::inspectNextDevice() {
+	if (_discoveredDevices.empty()) {
+		log("\nInspecting devices complete\n");
+		System::SetEvent(_discoveryCompletedEvent);
+		return;
+	}
+
+	CwclBluetoothRadio* Radio;
+	int Res = _wclBluetoothManager.GetLeRadio(Radio);
+	if (Res != WCL_E_SUCCESS)
+		error("Unable to get BT radio instance, error 0x%X!\n", Res);
+
+	_wclGattClient.ConnectOnRead = true;
+	_wclGattClient.ForceNotifications = false;
+	_wclGattClient.Address = _discoveredDevices.front();
+	_discoveredDevices.pop_front();
+
+	Res = _wclGattClient.Connect(Radio);
+	if (Res != WCL_E_SUCCESS)
+		log("Connect error 0x%X\n", Res);
 }
 
 void ButtplugDiscovery::wclGattClientConnect(void* Sender, const int Error) {
@@ -168,6 +141,19 @@ void ButtplugDiscovery::wclGattClientDisconnect(void* Sender, const int Reason) 
 		System::SetEvent(_discoveryCompletedEvent);
 	else
 		inspectNextDevice();
+}
+
+int ButtplugDiscovery::getHushDeviceType(BtAddress address, wclGattServices& services) {
+	for (wclGattService& service : services) {
+		if (service.Uuid.IsShortUuid)
+			continue;
+
+		for (int j = 0; j < NUM_HUSH_DEVICES; j++) {
+			if (!memcmp(&service.Uuid.LongUuid, &HUSH_DEVICE[j].serviceId.LongUuid, sizeof(GUID)))
+				return j;
+		}
+	}
+	return -1;
 }
 
 ButtplugConfig* ButtplugDiscovery::getAsConfiguration() {
@@ -286,4 +272,3 @@ const ButtplugDeviceDefinition ButtplugDiscovery::HUSH_DEVICE[] = {
 };
 
 const int ButtplugDiscovery::NUM_HUSH_DEVICES = sizeof(HUSH_DEVICE) / sizeof(HUSH_DEVICE[0]);
-
