@@ -58,44 +58,48 @@ ViGem360Pad::~ViGem360Pad() {
 }
 
 void ViGem360Pad::updateState() {
-    XINPUT_STATE state;
     // Grab the input from a physical X360 pad in this example
-    if (XInputGetState(_physicalPadId, &state) != ERROR_SUCCESS)
+    if (XInputGetState(_physicalPadId, &_padState) != ERROR_SUCCESS)
         error("Error reading from X360 pad %d!", _physicalPadId + 1);
 
-    if (_lastPacketId != state.dwPacketNumber) {
-        _lastPacketId = state.dwPacketNumber;
+    if (_lastPacketId != _padState.dwPacketNumber) {
+        _lastPacketId = _padState.dwPacketNumber;
         // The XINPUT_GAMEPAD structure is identical to the XUSB_REPORT structure
         // so we can simply take it "as-is" and cast it.
         //
         // Call this function on every input state change e.g. in a loop polling
         // another joystick or network device or thermometer or... you get the idea.
-        vigem_target_x360_update(_client, _outputPad, *reinterpret_cast<const XUSB_REPORT*>(&state.Gamepad));
+        vigem_target_x360_update(_client, _outputPad, *reinterpret_cast<const XUSB_REPORT*>(&_padState.Gamepad));
     }
 }
 
 void ViGem360Pad::rumbleCallback(UCHAR LargeMotor, UCHAR SmallMotor, UCHAR LedNumber) {
-    _rumbleStatusLeft = (_rumbleScaleLeft * LargeMotor) / 255;
-    _rumbleStatusRight = (_rumbleScaleRight * SmallMotor) / 255;
-    _rumbleStatusPlug = std::clamp(_rumbleStatusLeft + _rumbleStatusRight, 0, 100);
-    _buttplugDevice.setVibrate(_rumbleStatusPlug);
-    ++_rumbleInstructionCount;
+    int newLeft = (_rumbleScaleLeft * LargeMotor) / 255;
+    int newRight = (_rumbleScaleRight * SmallMotor) / 255;
+    if ((newLeft != _rumbleStatusLeft) || (newRight != _rumbleStatusRight)) {
+        _rumbleStatusLeft = newLeft;
+        _rumbleStatusRight = newRight;
 
-    if (_physicalPadId != 0xFFFF) {
-        XINPUT_VIBRATION vibration;
-        vibration.wLeftMotorSpeed = (static_cast<WORD>(LargeMotor) << 8) | LargeMotor;
-        vibration.wRightMotorSpeed = (static_cast<WORD>(SmallMotor) << 8) | SmallMotor;
-        XInputSetState(_physicalPadId, &vibration);
+        _rumbleStatusPlug = std::clamp(_rumbleStatusLeft + _rumbleStatusRight, 0, 100);
+        _buttplugDevice.setVibrate(_rumbleStatusPlug);
+        ++_rumbleInstructionCount;
+
+        if (_physicalPadId != 0xFFFF) {
+            XINPUT_VIBRATION vibration;
+            vibration.wLeftMotorSpeed = (static_cast<WORD>(LargeMotor) << 8) | LargeMotor;
+            vibration.wRightMotorSpeed = (static_cast<WORD>(SmallMotor) << 8) | SmallMotor;
+            XInputSetState(_physicalPadId, &vibration);
+        }
     }
 }
 
 bool ViGem360Pad::getRumbleState(int* commandCount, int* statusLeft, int* statusRight, int* statusPlug) {
-    if (*commandCount == _rumbleInstructionCount)
-        return false;
-    *commandCount = _rumbleInstructionCount;
     *statusLeft = _rumbleStatusLeft;
     *statusRight = _rumbleStatusRight;
     *statusPlug = _rumbleStatusPlug;
+    if (*commandCount == _rumbleInstructionCount)
+        return false;
+    *commandCount = _rumbleInstructionCount;
     return true;
 }
 
@@ -104,6 +108,20 @@ void ViGem360Pad::adjustRumble(int adjustLeft, int adjustRight) {
     _rumbleScaleRight = std::clamp(_rumbleScaleRight + adjustRight, 0, MAX_RUMBLE);
     _config.setVibration(_rumbleScaleLeft, _rumbleScaleRight);
     _config.toFile();
+}
+
+void ViGem360Pad::getAnalogueAsByte(UCHAR* left, UCHAR* right) {
+    int value;
+
+    value = max(abs(_padState.Gamepad.sThumbLX), abs(_padState.Gamepad.sThumbLY));
+    value -= XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE;
+    value = (value * 255) / (32767 - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+    *left = std::clamp(value, 0, 255);
+
+    value = max(abs(_padState.Gamepad.sThumbRX), abs(_padState.Gamepad.sThumbRY));
+    value -= XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE;
+    value = (value * 255) / (32767 - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+	*right = std::clamp(value, 0, 255);
 }
 
 int ViGem360Pad::getFirstPhysicalControllerIndex() {

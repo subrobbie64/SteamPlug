@@ -22,8 +22,8 @@ private:
     enum TerminalLine {
         LINE_BAT_STATUS = 1,
         LINE_STATUS_CTRL = 7,
-        LINE_VIRTUAL_CTRL = 9,
-        LINE_PHYSICAL_CTRL = 10,
+        LINE_VIRTUAL_CTRL = 3,
+        LINE_PHYSICAL_CTRL = 4,
         LINE_RUMBLE_STATUS = 12,
         LINE_KEY_HELP = 13,
         LINE_PLUG_STATUS = 15,
@@ -31,6 +31,8 @@ private:
     };
 
     void openButtplugDevice();
+
+    void printBar(Color col, int y, const char* prefix, int value);
     void printBatteryLevel();
 
     void atProgramExit();
@@ -100,14 +102,41 @@ void SteamPlugMain::run() {
     int cols, rows;
     getTerminalSize(&cols, &rows);
 
-    printXy(1, LINE_EVENT_STATUS, GREEN, "Processing events.\n");
     int cycleCount = -1;
     int rumbleCommands = 0, rumbleLeft = 0, rumbleRight = 0, rumblePlug = 0;
     int lastBatteryLevel = _currentBatteryLevel;
+    bool testing = false, wasTesting = true;
     while (true) {
-        _viGem360Pad->updateState();
-
         ++cycleCount;
+        _viGem360Pad->updateState();
+        
+        if (wasTesting != testing) {
+            wasTesting = testing;
+            clearScreen();
+            cycleCount = 0;
+            rumbleCommands = 0;
+            if (testing)
+                printXy(0, LINE_PHYSICAL_CTRL + 3, RED, "TESTING VIBRATIONS ONLY");
+            else
+                printXy(1, LINE_EVENT_STATUS, GREEN, "Processing events.\n");
+        }
+
+        if (testing) {
+            UCHAR left, right;
+			_viGem360Pad->getAnalogueAsByte(&left, &right);
+            _viGem360Pad->rumbleCallback(left, right, 0);
+            _viGem360Pad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight, &rumblePlug);
+
+            printBar(YELLOW, LINE_PHYSICAL_CTRL + 4, "Large motor:", (100 * left) / 255);
+			printBar(YELLOW, LINE_PHYSICAL_CTRL + 5, "Small motor:", (100 * right) / 255);
+            printBar(RED,    LINE_PHYSICAL_CTRL + 6, "Buttplug:   ", rumblePlug);
+            
+            if (_kbhit() && _getch())
+                testing = false;
+        } else if (_viGem360Pad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight, &rumblePlug) || (cycleCount == 0)) {
+            printXy(1, LINE_RUMBLE_STATUS, WHITE, "Rumble instructions: %d\nStatus: L=%3d, R=%3d => Plug=%3d", rumbleCommands, rumbleLeft, rumbleRight, rumblePlug);
+        }
+
         if ((cycleCount % 5) == 0) {
             if (_kbhit() || (cycleCount == 0)) {
                 int key = _kbhit() ? _getch() : 0;
@@ -122,13 +151,19 @@ void SteamPlugMain::run() {
                     else if (key == '-')
                         right = -RUMBLE_STEP;
                     _viGem360Pad->adjustRumble(left, right);
-                }
+                } else if (key == 't')
+                    testing = true;
                 int rumbleScaleLeft, rumbleScaleRight;
                 _buttplugConfig->getVibration(&rumbleScaleLeft, &rumbleScaleRight);
                 printXy(cols - 20, LINE_KEY_HELP + 0, WHITE, "Vib L/R: \x1B[%02Xm%3d%% / %3d%%", YELLOW, rumbleScaleLeft, rumbleScaleRight);
-                printXy(cols - 20, LINE_KEY_HELP + 1, WHITE, "Left: Q/A, Right: +/-");
+                printXy(cols - 20, LINE_KEY_HELP + 1, WHITE, "Q/A: Left, +/-: Right");
+                printXy(cols - 20, LINE_KEY_HELP + 2, WHITE, "T: Test Mode");
+
+                printXy(1, LINE_VIRTUAL_CTRL, GREEN, "Virtual controller index %d.", virtualPadIndex + 1);
+                printXy(1, LINE_PHYSICAL_CTRL, WHITE, "Attached to \x1B[%02Xmphysical controller %d!", GREEN, usePhysicalPad + 1);
             }
         }
+
         if ((cycleCount % 200) == 0) {
             if (_buttplugDevice->checkConnectionStatus() == BP_CONNECTED) {
                 printXy(1, 15, GREEN, "Buttplug connected.                   ");
@@ -138,10 +173,7 @@ void SteamPlugMain::run() {
                 printXy(1, 15, RED, "Buttplug disconnected, reconnecting...");
         }
 
-        if (_viGem360Pad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight, &rumblePlug))
-            printXy(1, LINE_RUMBLE_STATUS, WHITE, "Rumble instructions: %d\nStatus: L=%3d, R=%3d => Plug=%3d", rumbleCommands, rumbleLeft, rumbleRight, rumblePlug);
-
-        if (lastBatteryLevel != _currentBatteryLevel) {
+        if ((lastBatteryLevel != _currentBatteryLevel) || (cycleCount == 0)) {
             lastBatteryLevel = _currentBatteryLevel;
             printBatteryLevel();
         }
@@ -156,9 +188,23 @@ void SteamPlugMain::onBatteryLevelReceived(int batteryLevel) {
 	_currentBatteryLevel = batteryLevel;
 }
 
+void SteamPlugMain::printBar(Color col, int y, const char *prefix, int value) {
+    int terminalWidth, rows;
+    getTerminalSize(&terminalWidth, &rows);
+
+    int barWidth = (int)(terminalWidth - 7 - strlen(prefix));
+    if (barWidth >= 0) {
+        int barFill = (value * barWidth) / 100;
+        char barBuffer[256];
+        memset(barBuffer, ' ', barWidth + 1);
+        memset(barBuffer, '=', barFill);
+        barBuffer[barFill] = ']';
+        barBuffer[barWidth + 1] = '\0';
+        printXy(1, y, col, "%s [%s%3d%%", prefix, barBuffer, value);
+    }
+}
+
 void SteamPlugMain::printBatteryLevel() {
-    int cols, rows;
-    getTerminalSize(&cols, &rows);
     Color col = GREEN;
     if (_currentBatteryLevel < 20)
         col = YELLOW;
@@ -166,14 +212,7 @@ void SteamPlugMain::printBatteryLevel() {
         col = RED;
 
     _currentBatteryLevel = std::clamp(_currentBatteryLevel, 0, 100);
-    int barWidth = cols - 12;
-    int barFill = (_currentBatteryLevel * barWidth) / 100;
-    char barBuffer[256];
-    memset(barBuffer, ' ', barWidth + 1);
-    memset(barBuffer, '=', barFill);
-    barBuffer[barFill] = ']';
-    barBuffer[barWidth + 1] = '\0';
-    printXy(1, LINE_BAT_STATUS, col, "BAT: [%s%3d%%", barBuffer, _currentBatteryLevel);
+	printBar(col, LINE_BAT_STATUS, "BAT:", _currentBatteryLevel);
 }
 
 void SteamPlugMain::atProgramExit() {

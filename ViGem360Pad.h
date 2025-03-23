@@ -22,9 +22,10 @@ public:
 
     void updateState();
     bool getRumbleState(int* commandCount, int* statusLeft, int* statusRight, int* statusPlug);
-private:
-    void rumbleCallback(UCHAR LargeMotor, UCHAR SmallMotor, UCHAR LedNumber);
+	void getAnalogueAsByte(UCHAR* left, UCHAR* right);
 
+    void rumbleCallback(UCHAR LargeMotor, UCHAR SmallMotor, UCHAR LedNumber);
+private:
     static VOID CALLBACK rumbleCallbackFn(PVIGEM_CLIENT Client, PVIGEM_TARGET Target, UCHAR LargeMotor, UCHAR SmallMotor, UCHAR LedNumber, LPVOID UserData);
 
     PVIGEM_CLIENT _client;
@@ -38,4 +39,6 @@ private:
 
     int _rumbleInstructionCount, _rumbleStatusLeft, _rumbleStatusRight, _rumbleStatusPlug;
     int _rumbleScaleLeft, _rumbleScaleRight;
+
+    XINPUT_STATE _padState;
 };
