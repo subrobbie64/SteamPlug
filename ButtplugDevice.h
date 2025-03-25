@@ -4,7 +4,7 @@
 enum BPStatus {
 	BP_CONNECTING,
 	BP_CONNECTED,
-	BP_DISCONNECTED,
+	BP_DISCONNECTED
 };
 
 class BatteryListener {

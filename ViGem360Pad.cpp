@@ -14,7 +14,7 @@
 #define MAX_RUMBLE 200
 
 ViGem360Pad::ViGem360Pad(ButtplugDevice& buttplugDevice, ButtplugConfig &config) 
-    : _client(vigem_alloc()), _outputPad(NULL), _physicalPadId(0xFFFF), _lastPacketId(0), _buttplugDevice(buttplugDevice), _config(config), _rumbleInstructionCount(0) {
+    : _client(vigem_alloc()), _outputPad(NULL), _virtualPadPlayerIndex(-1), _physicalPadId(0xFFFF), _lastPacketId(0), _buttplugDevice(buttplugDevice), _config(config), _rumbleInstructionCount(0), _padState() {
 
 	_config.getVibration(&_rumbleScaleLeft, &_rumbleScaleRight);
     _rumbleStatusLeft = _rumbleStatusRight = _rumbleStatusPlug = 0;
@@ -26,6 +26,8 @@ ViGem360Pad::ViGem360Pad(ButtplugDevice& buttplugDevice, ButtplugConfig &config)
     VIGEM_ERROR retval = vigem_connect(_client);
     if (!VIGEM_SUCCESS(retval))
 		error("ViGEm Bus connection failed with error code: 0x%X\n", retval);
+
+	_padIdAssigmentEvent = System::CreateEventFlag();
     
     debug("Setting up virtual x360 controller...");
     //
@@ -40,13 +42,11 @@ ViGem360Pad::ViGem360Pad(ButtplugDevice& buttplugDevice, ButtplugConfig &config)
 		error("Virtual controller plug-in failed: 0x%X", retval);
     debug("okay!\n");
 
-	retval = vigem_target_x360_get_user_index(_client, _outputPad, &_virtualPadPlayerIndex);
-	if (!VIGEM_SUCCESS(retval))
-		error("Unable to get virtual controller index: 0x%X", retval);
-
     retval = vigem_target_x360_register_notification(_client, _outputPad, &rumbleCallbackFn, this);
     if (!VIGEM_SUCCESS(retval))
         error("Registering for notification failed with error code: 0x%X", retval);
+
+    waitForIdAssignment();
 }
 
 ViGem360Pad::~ViGem360Pad() {
@@ -73,7 +73,7 @@ void ViGem360Pad::updateState() {
     }
 }
 
-void ViGem360Pad::rumbleCallback(UCHAR LargeMotor, UCHAR SmallMotor, UCHAR LedNumber) {
+void ViGem360Pad::setRumble(UCHAR LargeMotor, UCHAR SmallMotor) {
     int newLeft = (_rumbleScaleLeft * LargeMotor) / 255;
     int newRight = (_rumbleScaleRight * SmallMotor) / 255;
     if ((newLeft != _rumbleStatusLeft) || (newRight != _rumbleStatusRight)) {
@@ -82,7 +82,6 @@ void ViGem360Pad::rumbleCallback(UCHAR LargeMotor, UCHAR SmallMotor, UCHAR LedNu
 
         _rumbleStatusPlug = std::clamp(_rumbleStatusLeft + _rumbleStatusRight, 0, 100);
         _buttplugDevice.setVibrate(_rumbleStatusPlug);
-        ++_rumbleInstructionCount;
 
         if (_physicalPadId != 0xFFFF) {
             XINPUT_VIBRATION vibration;
@@ -91,6 +90,16 @@ void ViGem360Pad::rumbleCallback(UCHAR LargeMotor, UCHAR SmallMotor, UCHAR LedNu
             XInputSetState(_physicalPadId, &vibration);
         }
     }
+}
+
+void ViGem360Pad::rumbleCallback(UCHAR LargeMotor, UCHAR SmallMotor, UCHAR LedNumber) {
+    if (LedNumber != _virtualPadPlayerIndex) {
+        printf("Rumble CB: got LEDD %d\n", LedNumber);
+        _virtualPadPlayerIndex = LedNumber;
+		System::SetEvent(_padIdAssigmentEvent);
+    }
+    ++_rumbleInstructionCount;
+	setRumble(LargeMotor, SmallMotor);
 }
 
 bool ViGem360Pad::getRumbleState(int* commandCount, int* statusLeft, int* statusRight, int* statusPlug) {
@@ -134,6 +143,11 @@ int ViGem360Pad::getFirstPhysicalControllerIndex() {
             return i;
     }
     return -1;
+}
+
+int ViGem360Pad::waitForIdAssignment() {
+	System::WaitEvent(_padIdAssigmentEvent);
+	return (int)_virtualPadPlayerIndex;
 }
 
 int ViGem360Pad::getVirtualPadUserIndex() {

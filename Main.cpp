@@ -72,9 +72,10 @@ void SteamPlugMain::openButtplugDevice() {
 
     _buttplugDevice = new ButtplugDevice(_buttplugConfig->getMacAddress(), _buttplugConfig->getButtplugDefinition());
     _buttplugDevice->setBatteryListener(this);
+    log("Trying to connect Buttplug %s...", Mac2String(_buttplugConfig->getMacAddress()).c_str());
+    _buttplugDevice->connect();
     _buttplugDevice->waitForConnection();
-
-    printXy(1, LINE_PLUG_STATUS, GREEN, "Buttplug connected.\n");
+	log("connected.\n");
 
     _buttplugDevice->setVibrate(10);
     Sleep(200);
@@ -83,19 +84,36 @@ void SteamPlugMain::openButtplugDevice() {
     _buttplugDevice->setVibrate(0);
 }
 
+int getFirstPhysicalControllerIndex(int virtualPadPlayerIndex = -1) {
+    for (DWORD i = 0; i < XUSER_MAX_COUNT; i++) {
+        if (i == virtualPadPlayerIndex)
+            continue;
+
+        XINPUT_STATE state;
+        if (XInputGetState(i, &state) == ERROR_SUCCESS)
+            return i;
+    }
+    return -1;
+}
+
 void SteamPlugMain::run() {
     openButtplugDevice();
+    printXy(1, LINE_PLUG_STATUS, GREEN, "Buttplug connected.\n");
+
+    int usePhysicalPad = getFirstPhysicalControllerIndex();
 
     _viGem360Pad = new ViGem360Pad(*_buttplugDevice, *_buttplugConfig);
-
+    printXy(1, LINE_STATUS_CTRL, WHITE, "Installed X360 controller");
+    
     int virtualPadIndex = _viGem360Pad->getVirtualPadUserIndex();
-    printXy(1, LINE_STATUS_CTRL, WHITE, "Installed X360 controller.");
-	printXy(1, LINE_VIRTUAL_CTRL, GREEN, "Virtual controller index %d.", virtualPadIndex + 1);
+    printXy(1, LINE_VIRTUAL_CTRL, GREEN, "Virtual controller index %d.", virtualPadIndex + 1);
 
     printXy(1, LINE_PHYSICAL_CTRL, YELLOW, "Waiting for physical controller...");
-    int usePhysicalPad;
-    while ((usePhysicalPad = _viGem360Pad->getFirstPhysicalControllerIndex()) < 0)
+    while (usePhysicalPad < 0) {
         Sleep(1000);
+        usePhysicalPad = _viGem360Pad->getFirstPhysicalControllerIndex();
+    }
+
     printXy(1, LINE_PHYSICAL_CTRL, WHITE, "Attached to \x1B[%02Xmphysical controller %d!", GREEN, usePhysicalPad + 1);
     _viGem360Pad->attachToPhysicalPad(usePhysicalPad);
 
@@ -124,12 +142,13 @@ void SteamPlugMain::run() {
         if (testing) {
             UCHAR left, right;
 			_viGem360Pad->getAnalogueAsByte(&left, &right);
-            _viGem360Pad->rumbleCallback(left, right, 0);
+            _viGem360Pad->setRumble(left, right);
             _viGem360Pad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight, &rumblePlug);
 
             printBar(YELLOW, LINE_PHYSICAL_CTRL + 4, "Large motor:", (100 * left) / 255);
 			printBar(YELLOW, LINE_PHYSICAL_CTRL + 5, "Small motor:", (100 * right) / 255);
             printBar(RED,    LINE_PHYSICAL_CTRL + 6, "Buttplug:   ", rumblePlug);
+            printXy(0, LINE_PHYSICAL_CTRL + 7, RED, "Use left and right analog sticks");
             
             if (_kbhit() && _getch())
                 testing = false;
@@ -139,7 +158,7 @@ void SteamPlugMain::run() {
 
         if ((cycleCount % 5) == 0) {
             if (_kbhit() || (cycleCount == 0)) {
-                int key = _kbhit() ? _getch() : 0;
+				int key = _kbhit() ? _getch() : 0;
                 if ((key == 'q') || (key == 'a') || (key == '+') || (key == '-')) {
                     int left = 0, right = 0;
                     if (key == 'q')
@@ -157,7 +176,7 @@ void SteamPlugMain::run() {
                 _buttplugConfig->getVibration(&rumbleScaleLeft, &rumbleScaleRight);
                 printXy(cols - 20, LINE_KEY_HELP + 0, WHITE, "Vib L/R: \x1B[%02Xm%3d%% / %3d%%", YELLOW, rumbleScaleLeft, rumbleScaleRight);
                 printXy(cols - 20, LINE_KEY_HELP + 1, WHITE, "Q/A: Left, +/-: Right");
-                printXy(cols - 20, LINE_KEY_HELP + 2, WHITE, "T: Test Mode");
+                printXy(cols - 20, LINE_KEY_HELP + 2, WHITE, "T: Test Vibrations");
 
                 printXy(1, LINE_VIRTUAL_CTRL, GREEN, "Virtual controller index %d.", virtualPadIndex + 1);
                 printXy(1, LINE_PHYSICAL_CTRL, WHITE, "Attached to \x1B[%02Xmphysical controller %d!", GREEN, usePhysicalPad + 1);

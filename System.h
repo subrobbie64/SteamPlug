@@ -24,7 +24,11 @@ enum Color {
 
 void __declspec(noreturn) error(const char* str, ...);
 void log(const char* str, ...);
+#ifdef _DEBUG
+#define debug log
+#else
 #define debug(a, ...) void(0)
+#endif
 
 void clearScreen();
 void getTerminalSize(int* columns, int* rows);

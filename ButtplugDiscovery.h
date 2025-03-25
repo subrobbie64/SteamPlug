@@ -16,6 +16,8 @@ typedef unsigned long long BtAddress;
 
 class ButtplugConfig;
 
+std::string Mac2String(BtAddress Address);
+
 class ButtplugDiscovery {
 public:
 	ButtplugDiscovery();
