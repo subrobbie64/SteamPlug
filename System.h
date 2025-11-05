@@ -52,6 +52,7 @@ namespace System {
 	void ResetEvent(sysevent_t event);
 	void WaitEvent(sysevent_t event);
 	bool WaitEvent(sysevent_t event, int timeOutMillis);
+	void DestroyEventFlag(sysevent_t event);
 
 	void CreateSema(syssema_t* sema, int initialCount);
 	void ClearSema(syssema_t* sema);
@@ -59,7 +60,4 @@ namespace System {
 	int WaitSema(syssema_t* sema, int timeOutMillis);
 	void SignalSema(syssema_t* sema);
 	void DestroySema(syssema_t* sema);
-
-	void setupInputIO(int pin);
-	bool readInputIO(int pin);
 }

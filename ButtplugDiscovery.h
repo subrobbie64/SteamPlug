@@ -1,34 +1,20 @@
 #pragma once
-
-#include <wclBluetooth.h>
+#include "ButtplugDevice.h"
 #include "System.h"
 #include <deque>
 
 using namespace wclBluetooth;
 
-struct ButtplugDeviceDefinition {
-	wclGattUuid serviceId;
-	wclGattUuid txCharacteristicId;
-	wclGattUuid rxCharacteristicId;
-};
-
-typedef unsigned long long BtAddress;
-
 class ButtplugConfig;
-
-std::string Mac2String(BtAddress Address);
 
 class ButtplugDiscovery {
 public:
 	ButtplugDiscovery();
+	~ButtplugDiscovery();
 
-	bool runDiscovery();
-	
-	ButtplugConfig* getAsConfiguration();
-
-	static const ButtplugDeviceDefinition HUSH_DEVICE[];
-	static const int NUM_HUSH_DEVICES;
+	ButtplugConfig* runDiscovery();
 private:
+	CwclBluetoothRadio* getRadio();
 	void wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio, const __int64 Address);
 
 	void wclBluetoothManagerDiscoveringStarted(void* Sender, CwclBluetoothRadio* const Radio);
@@ -48,6 +34,7 @@ private:
 
 	BtAddress _discoveredHushDevice;
 	int _discoveredHushDeviceType;
+	std::string _discoveredHushName;
 
 	sysevent_t _discoveryCompletedEvent;
 };

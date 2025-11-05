@@ -1,18 +1,18 @@
 #pragma once
 
-#include "ButtplugDiscovery.h"
+typedef unsigned long long BtAddress;
 
 class ButtplugConfig {
 public:
 	ButtplugConfig(BtAddress macAddress, int type);
 
-	BtAddress getMacAddress();
-	const ButtplugDeviceDefinition* getButtplugDefinition();
+	BtAddress getMacAddress() const;
+	int getType() const;
 	
-	void getVibration(int* vibrateLeft, int* vibrateRight);
+	void getVibration(int* vibrateLeft, int* vibrateRight) const;
 	void setVibration(int vibrateLeft, int vibrateRight);
 
-	void toFile();
+	void toFile() const;
 	static ButtplugConfig* fromFile();
 private:
 	ButtplugConfig(BtAddress macAddress, int type, int vibrateLeft, int vibrateRight);

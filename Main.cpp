@@ -1,57 +1,100 @@
 #include <iostream>
 #include <algorithm>
+#include <Windows.h>
 #include "ButtplugDiscovery.h"
 #include "ButtplugDevice.h"
 #include "ButtplugConfig.h"
-#include "ViGem360Pad.h"
+#include "XBoxPad.h"
+#include "DualShockPad.h"
 #include "System.h"
 
 #include <conio.h>
 #include "resource.h"
 
+#pragma warning(disable: 6255)
+
+#define PLUG_BATTERY_LEVEL_LOW 20
+#define PLUG_BATTERY_LEVEL_CRITICAL 10
 #define RUMBLE_STEP 2
 
-class SteamPlugMain : public BatteryListener {
+//#define USE_HUSH2
+
+#include "Coyote3Discovery.h"
+#include "Coyote3Device.h"
+
+class SteamPlugMain {
 public:
+    enum ControllerMode {
+        NONE,
+        XBOXPAD,
+        DUALSHOCK
+    };
     SteamPlugMain();
+    ~SteamPlugMain();
 
     void run();
 
-    virtual void onBatteryLevelReceived(int batteryLevel);
 private:
     enum TerminalLine {
-        LINE_BAT_STATUS = 1,
-        LINE_STATUS_CTRL = 7,
-        LINE_VIRTUAL_CTRL = 3,
-        LINE_PHYSICAL_CTRL = 4,
-        LINE_RUMBLE_STATUS = 12,
-        LINE_KEY_HELP = 13,
-        LINE_PLUG_STATUS = 15,
-        LINE_EVENT_STATUS = 16
+        LINE_PLUG_STATUS = 1,
+        LINE_PLUG_BATTERY = 2,
+        LINE_PHYSPAD_STATUS = 3,
+        LINE_PHYSPAD_BATTERY = 4,
+        LINE_VIRTPAD_STATUS = 5,
+        LINE_TEST_STATUS = 8,
+        LINE_RUMBLE_STATUS = 13,
+        LINE_KEY_HELP = 14,
+        LINE_EVENT_STATUS = 17
     };
 
     void openButtplugDevice();
+    PhysicalPad* openGamePad(ControllerMode* mode, int* physicalPadIndex, bool initialize);
 
     void printBar(Color col, int y, const char* prefix, int value);
-    void printBatteryLevel();
+    void printPlugBatteryLevel(unsigned char batteryLevel);
+    void printPadBatteryLevel(unsigned char batteryLevel);
+
+    bool keyToCoyoteAction(int key, int* adjustLeft, int* adjustRight);
+    bool keyToAction(int key, int* adjustLeft, int* adjustRight);
 
     void atProgramExit();
     static void __cdecl atProgramExitFunc();
 
     ButtplugConfig* _buttplugConfig;
-    ButtplugDevice* _buttplugDevice;
-    ViGem360Pad* _viGem360Pad;
+    AbstractButtDevice* _buttplugDevice;
+    CoyoteDevice* _coyoteDevice;
 
-    int _currentBatteryLevel;
+    int _coyoteChannelA, _coyoteChannelB;
+
+    VirtualPad* _virtualPad;
+
+    unsigned long long _waitPadDetection;
 
     static SteamPlugMain* s_MainInstance;
 };
 
 SteamPlugMain* SteamPlugMain::s_MainInstance = NULL;
 
-SteamPlugMain::SteamPlugMain() : _buttplugConfig(NULL), _buttplugDevice(NULL), _viGem360Pad(NULL), _currentBatteryLevel(-1) {
+SteamPlugMain::SteamPlugMain() : _buttplugConfig(NULL), _buttplugDevice(NULL), _coyoteDevice(NULL), _virtualPad(NULL) {
     s_MainInstance = this;
     atexit(atProgramExitFunc);
+    
+    _coyoteChannelA = _coyoteChannelB = 0;
+    _waitPadDetection = 0;
+}
+
+SteamPlugMain::~SteamPlugMain() {
+}
+
+extern BtAddress getBtAddressFromString(const char* str);
+ButtplugConfig *getCoyote() {
+    return new ButtplugConfig(getBtAddressFromString("DB:BB:93:3B:2D:05"), 0);
+    /*
+    CoyoteDiscovery coyDiscovery;
+    BtAddress devAddress = coyDiscovery.runDiscovery();
+    if (devAddress)
+        printf("Discovery success! %s\n", Mac2String(devAddress).c_str());
+    return devAddress;*/
 }
 
 void SteamPlugMain::openButtplugDevice() {
@@ -60,161 +103,220 @@ void SteamPlugMain::openButtplugDevice() {
         log("No Buttplug address found in config, running Discovery!\n");
 
         ButtplugDiscovery discovery;
-        if (!discovery.runDiscovery())
+        _buttplugConfig = discovery.runDiscovery();
+		if (_buttplugConfig == NULL)
             error("No Buttplug device found!\n");
-
-        _buttplugConfig = discovery.getAsConfiguration();
         _buttplugConfig->toFile();
+
         Sleep(3000);
         clearScreen();
         printXy(1, 2, WHITE, "");
     }
 
-    _buttplugDevice = new ButtplugDevice(_buttplugConfig->getMacAddress(), _buttplugConfig->getButtplugDefinition());
-    _buttplugDevice->setBatteryListener(this);
-    log("Trying to connect Buttplug %s...", Mac2String(_buttplugConfig->getMacAddress()).c_str());
+#ifdef USE_HUSH2
+    log("Trying to connect Buttplug at %s...", Mac2String(_buttplugConfig->getMacAddress()).c_str());
+    _buttplugDevice = new ButtplugDevice(*_buttplugConfig);
+#else
+    ButtplugConfig* cfg = getCoyote();
+    log("Trying to connect Coyote 3.0 at %s...", Mac2String(cfg->getMacAddress()).c_str());
+    _coyoteDevice = new CoyoteDevice(*cfg);
+    _buttplugDevice = _coyoteDevice;
+#endif
     _buttplugDevice->connect();
-    _buttplugDevice->waitForConnection();
-	log("connected.\n");
+    while (!_buttplugDevice->isConnected())
+        System::Sleep(1000);
+	log("%s connected.\n", _buttplugDevice->getDeviceName().c_str());
+#ifndef USE_HUSH2
+    _coyoteDevice->sendGlobalSettings(40, 40, 255, 255, 255, 255);
+    System::Sleep(500);
+    _coyoteChannelA = 25;
+    _coyoteChannelB = 25;
+#endif
 
-    _buttplugDevice->setVibrate(10);
+    _buttplugDevice->setVibrate(40, 40);
     Sleep(200);
-    _buttplugDevice->setVibrate(5);
+    _buttplugDevice->setVibrate(20, 20);
     Sleep(200);
-    _buttplugDevice->setVibrate(0);
+    _buttplugDevice->setVibrate(0, 0);
+
+    clearScreen();
 }
 
-int getFirstPhysicalControllerIndex(int virtualPadPlayerIndex = -1) {
-    for (DWORD i = 0; i < XUSER_MAX_COUNT; i++) {
-        if (i == virtualPadPlayerIndex)
-            continue;
+bool SteamPlugMain::keyToAction(int key, int* adjustLeft, int* adjustRight) {
+	*adjustLeft = *adjustRight = 0;
+    if (key == 'o')
+        *adjustLeft = RUMBLE_STEP;
+    else if (key == 'l')
+        *adjustLeft = -RUMBLE_STEP;
+    else if (key == '+')
+        *adjustRight = RUMBLE_STEP;
+    else if (key == '-')
+        *adjustRight = -RUMBLE_STEP;
+    else
+        return false;
 
-        XINPUT_STATE state;
-        if (XInputGetState(i, &state) == ERROR_SUCCESS)
-            return i;
+    return true;
+}
+
+bool SteamPlugMain::keyToCoyoteAction(int key, int* adjustLeft, int* adjustRight) {
+    *adjustLeft = *adjustRight = 0;
+    if (key == 'q')
+        *adjustLeft = RUMBLE_STEP;
+    else if (key == 'a')
+        *adjustLeft = -RUMBLE_STEP;
+    else if (key == 'w')
+        *adjustRight = RUMBLE_STEP;
+    else if (key == 's')
+        *adjustRight = -RUMBLE_STEP;
+    else
+        return false;
+
+    return true;
+}
+
+PhysicalPad* SteamPlugMain::openGamePad(ControllerMode *mode, int *physicalPadIndex, bool initialize) {
+    if (_waitPadDetection <= System::GetMicros()) {
+        DualPad* dsPad = DualPad::detectController();
+        if (dsPad) {
+            *mode = DUALSHOCK;
+            *physicalPadIndex = -1;
+            return dsPad;
+        }
+        XBoxPad* xboxPad = XBoxPad::detectController(_virtualPad->getVirtualPadUserIndex());
+        if (xboxPad) {
+            *mode = XBOXPAD;
+            *physicalPadIndex = xboxPad->getPadId();
+            return xboxPad;
+        }
+        _waitPadDetection = System::GetMicros() + 2500000;
     }
-    return -1;
+    return NULL;
 }
 
 void SteamPlugMain::run() {
     openButtplugDevice();
-    printXy(1, LINE_PLUG_STATUS, GREEN, "Buttplug connected.\n");
+	_virtualPad = new VirtualPad(*_buttplugDevice);
 
-    int usePhysicalPad = getFirstPhysicalControllerIndex();
-
-    _viGem360Pad = new ViGem360Pad(*_buttplugDevice, *_buttplugConfig);
-    printXy(1, LINE_STATUS_CTRL, WHITE, "Installed X360 controller");
-    
-    int virtualPadIndex = _viGem360Pad->getVirtualPadUserIndex();
-    printXy(1, LINE_VIRTUAL_CTRL, GREEN, "Virtual controller index %d.", virtualPadIndex + 1);
-
-    printXy(1, LINE_PHYSICAL_CTRL, YELLOW, "Waiting for physical controller...");
-    while (usePhysicalPad < 0) {
-        Sleep(1000);
-        usePhysicalPad = _viGem360Pad->getFirstPhysicalControllerIndex();
-    }
-
-    printXy(1, LINE_PHYSICAL_CTRL, WHITE, "Attached to \x1B[%02Xmphysical controller %d!", GREEN, usePhysicalPad + 1);
-    _viGem360Pad->attachToPhysicalPad(usePhysicalPad);
-
-    int cols, rows;
-    getTerminalSize(&cols, &rows);
-
-    int cycleCount = -1;
+    int cycleCount = 0, lastPlugBatteryLevel = -1, lastPadBatteryLevel = -1;
     int rumbleCommands = 0, rumbleLeft = 0, rumbleRight = 0, rumblePlug = 0;
-    int lastBatteryLevel = _currentBatteryLevel;
-    bool testing = false, wasTesting = true;
+    bool testing = false, wasTesting = false;
+    ControllerMode mode;
+    int physicalPadIndex;
+    PhysicalPad* physicalPad = NULL;
     while (true) {
-        ++cycleCount;
-        _viGem360Pad->updateState();
+        if ((cycleCount % 100) == 0) {
+            if (_buttplugDevice->isConnected()) {
+                printXy(1, LINE_PLUG_STATUS, GREEN, "Buttplug connected.                   ");
+            } else
+                printXy(1, LINE_PLUG_STATUS, RED, "Buttplug disconnected, reconnecting...      ");
+        }
+
+        _virtualPad->updateState();
+		if ((physicalPad == NULL) || physicalPad->isError()) {
+            printXy(1, LINE_PHYSPAD_STATUS, WHITE, "Physical gamepad: waiting for controller.");
+            _virtualPad->setPhysicalPad(NULL);
+            delete physicalPad;
+            physicalPad = NULL;
+            physicalPad = openGamePad(&mode, &physicalPadIndex, cycleCount == 0);
+            cycleCount = 0;
+		}
+
+        if (cycleCount == 0) {
+            if (physicalPad) {
+                char strBuf[8];
+                printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s %s                      ", (mode == DUALSHOCK) ? "DualShock" : "XBox", (physicalPadIndex < 0) ? "" : _itoa(physicalPadIndex + 1, strBuf, 10));
+                _virtualPad->setPhysicalPad(physicalPad);
+            }
+            printXy(1, LINE_VIRTPAD_STATUS, GREEN, "Emulating X360 controller with index %d.", _virtualPad->getVirtualPadUserIndex() + 1);
+        }
         
         if (wasTesting != testing) {
             wasTesting = testing;
             clearScreen();
             cycleCount = 0;
             rumbleCommands = 0;
-            if (testing)
-                printXy(0, LINE_PHYSICAL_CTRL + 3, RED, "TESTING VIBRATIONS ONLY");
-            else
-                printXy(1, LINE_EVENT_STATUS, GREEN, "Processing events.\n");
+            System::Sleep(50);
+			_virtualPad->setRumble(0, 0);
+            System::Sleep(50);
         }
 
         if (testing) {
             UCHAR left, right;
-			_viGem360Pad->getAnalogueAsByte(&left, &right);
-            _viGem360Pad->setRumble(left, right);
-            _viGem360Pad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight, &rumblePlug);
+            _virtualPad->getAnalogSticksAsByte(&left, &right);
+            _virtualPad->setRumble(left, right);
+            _virtualPad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight);
+            rumblePlug = _buttplugDevice->getEffectiveVibration();
 
-            printBar(YELLOW, LINE_PHYSICAL_CTRL + 4, "Large motor:", (100 * left) / 255);
-			printBar(YELLOW, LINE_PHYSICAL_CTRL + 5, "Small motor:", (100 * right) / 255);
-            printBar(RED,    LINE_PHYSICAL_CTRL + 6, "Buttplug:   ", rumblePlug);
-            printXy(0, LINE_PHYSICAL_CTRL + 7, RED, "Use left and right analog sticks");
+            printXy(0, LINE_TEST_STATUS, RED, "TESTING VIBRATIONS ONLY");
+            printBar(YELLOW, LINE_TEST_STATUS + 1, "Large motor:", (100 * left) / 255);
+			printBar(YELLOW, LINE_TEST_STATUS + 2, "Small motor:", (100 * right) / 255);
+            printBar(RED,    LINE_TEST_STATUS + 3, "Buttplug:   ", rumblePlug);
+            printXy(0, LINE_TEST_STATUS + 4, RED, "Use left and right analog sticks");
             
-            if (_kbhit() && _getch())
+            if (_kbhit() && (_getch() == 't'))
                 testing = false;
-        } else if (_viGem360Pad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight, &rumblePlug) || (cycleCount == 0)) {
+        } else if (_virtualPad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight) || (cycleCount == 0)) {
+            rumblePlug = _buttplugDevice->getEffectiveVibration();
             printXy(1, LINE_RUMBLE_STATUS, WHITE, "Rumble instructions: %d\nStatus: L=%3d, R=%3d => Plug=%3d", rumbleCommands, rumbleLeft, rumbleRight, rumblePlug);
+            printXy(1, LINE_EVENT_STATUS, GREEN, "Processing events.");
         }
 
         if ((cycleCount % 5) == 0) {
             if (_kbhit() || (cycleCount == 0)) {
 				int key = _kbhit() ? _getch() : 0;
-                if ((key == 'q') || (key == 'a') || (key == '+') || (key == '-')) {
-                    int left = 0, right = 0;
-                    if (key == 'q')
-                        left = RUMBLE_STEP;
-                    else if (key == 'a')
-                        left = -RUMBLE_STEP;
-                    else if (key == '+')
-                        right = RUMBLE_STEP;
-                    else if (key == '-')
-                        right = -RUMBLE_STEP;
-                    _viGem360Pad->adjustRumble(left, right);
-                } else if (key == 't')
+				int adjustLeft, adjustRight, adjustChA, adjustChB;
+                if (key == 't')
                     testing = true;
+                else if (keyToAction(key, &adjustLeft, &adjustRight))
+                    _buttplugDevice->adjustVibration(adjustLeft, adjustRight);
+                    //_virtualPad->adjustRumble(adjustLeft, adjustRight);
+#ifndef USE_HUSH2
+				else if (keyToCoyoteAction(key, &adjustChA, &adjustChB)) {
+                    _coyoteChannelA = std::clamp(_coyoteChannelA + adjustChA, 0, 100);
+                    _coyoteChannelB = std::clamp(_coyoteChannelB + adjustChB, 0, 100);
+                    _coyoteDevice->configVibrate((unsigned char)_coyoteChannelA, (unsigned char)_coyoteChannelB);
+                }
+#endif
+
+                int cols, rows;
+                getTerminalSize(&cols, &rows);
+
                 int rumbleScaleLeft, rumbleScaleRight;
                 _buttplugConfig->getVibration(&rumbleScaleLeft, &rumbleScaleRight);
                 printXy(cols - 20, LINE_KEY_HELP + 0, WHITE, "Vib L/R: \x1B[%02Xm%3d%% / %3d%%", YELLOW, rumbleScaleLeft, rumbleScaleRight);
-                printXy(cols - 20, LINE_KEY_HELP + 1, WHITE, "Q/A: Left, +/-: Right");
+                printXy(cols - 20, LINE_KEY_HELP + 1, WHITE, "O/L: Left, +/-: Right");
                 printXy(cols - 20, LINE_KEY_HELP + 2, WHITE, "T: Test Vibrations");
-
-                printXy(1, LINE_VIRTUAL_CTRL, GREEN, "Virtual controller index %d.", virtualPadIndex + 1);
-                printXy(1, LINE_PHYSICAL_CTRL, WHITE, "Attached to \x1B[%02Xmphysical controller %d!", GREEN, usePhysicalPad + 1);
+#ifndef USE_HUSH2
+                printXy(cols - 40, LINE_KEY_HELP + 0, WHITE, "Ch A/B: \x1B[%02Xm%3d%% / %3d%%", YELLOW, _coyoteChannelA, _coyoteChannelB);
+                printXy(cols - 40, LINE_KEY_HELP + 1, WHITE, "Q/A: Ch A, W/S: Ch B");
+#endif
             }
         }
 
-        if ((cycleCount % 200) == 0) {
-            if (_buttplugDevice->checkConnectionStatus() == BP_CONNECTED) {
-                printXy(1, 15, GREEN, "Buttplug connected.                   ");
-                if ((cycleCount % 2000) == 0)
-                    _buttplugDevice->readBatteryLevel();
-            } else
-                printXy(1, 15, RED, "Buttplug disconnected, reconnecting...");
+        if (lastPlugBatteryLevel != _buttplugDevice->getBatteryLevel()) {
+            lastPlugBatteryLevel = _buttplugDevice->getBatteryLevel();
+            printPlugBatteryLevel(lastPlugBatteryLevel);
         }
+		if ((physicalPad == NULL) || (lastPadBatteryLevel != physicalPad->getBatteryState())) {
+            lastPadBatteryLevel = physicalPad ? physicalPad->getBatteryState() : 0;
+            printPadBatteryLevel(lastPadBatteryLevel);
+		}
 
-        if ((lastBatteryLevel != _currentBatteryLevel) || (cycleCount == 0)) {
-            lastBatteryLevel = _currentBatteryLevel;
-            printBatteryLevel();
-        }
-
+        ++cycleCount;
         System::Sleep(10);
     }
-    delete _viGem360Pad;
-    _viGem360Pad = NULL;
-}
-
-void SteamPlugMain::onBatteryLevelReceived(int batteryLevel) {
-	_currentBatteryLevel = batteryLevel;
+    delete _virtualPad;
+    _virtualPad = NULL;
 }
 
 void SteamPlugMain::printBar(Color col, int y, const char *prefix, int value) {
     int terminalWidth, rows;
     getTerminalSize(&terminalWidth, &rows);
-
+    
     int barWidth = (int)(terminalWidth - 7 - strlen(prefix));
     if (barWidth >= 0) {
         int barFill = (value * barWidth) / 100;
-        char barBuffer[256];
+		char* barBuffer = (char*)_alloca(barWidth + 2);
         memset(barBuffer, ' ', barWidth + 1);
         memset(barBuffer, '=', barFill);
         barBuffer[barFill] = ']';
@@ -223,25 +325,41 @@ void SteamPlugMain::printBar(Color col, int y, const char *prefix, int value) {
     }
 }
 
-void SteamPlugMain::printBatteryLevel() {
+void SteamPlugMain::printPlugBatteryLevel(unsigned char plugBatteryLevel) {
     Color col = GREEN;
-    if (_currentBatteryLevel < 20)
+    if (plugBatteryLevel <= PLUG_BATTERY_LEVEL_CRITICAL)
+        col = RED; 
+    else if (plugBatteryLevel <= PLUG_BATTERY_LEVEL_LOW)
         col = YELLOW;
-    else if (_currentBatteryLevel < 10)
-        col = RED;
 
-    _currentBatteryLevel = std::clamp(_currentBatteryLevel, 0, 100);
-	printBar(col, LINE_BAT_STATUS, "BAT:", _currentBatteryLevel);
+	printBar(col, LINE_PLUG_BATTERY, "Plug bat:", plugBatteryLevel);
+}
+
+void SteamPlugMain::printPadBatteryLevel(unsigned char batteryLevel) {
+    if (batteryLevel == 0xFF) {
+		printXy(1, LINE_PHYSPAD_BATTERY, GREEN, "Pad bat:  Wired");
+    } else {
+        const bool charging = batteryLevel & 0x80;
+        batteryLevel &= 0x7F;
+        Color col = GREEN;
+        if (batteryLevel <= PLUG_BATTERY_LEVEL_CRITICAL)
+            col = RED;
+        else if (batteryLevel <= PLUG_BATTERY_LEVEL_LOW)
+            col = YELLOW;
+        printBar(col, LINE_PHYSPAD_BATTERY, "Pad bat: ", batteryLevel);
+        if (charging)
+            printXy(0, LINE_PHYSPAD_BATTERY, GREEN, " -Charging- ");
+    }
 }
 
 void SteamPlugMain::atProgramExit() {
-	if (_viGem360Pad != NULL) {
-		delete _viGem360Pad;
-		_viGem360Pad = NULL;
+	if (_virtualPad != NULL) {
+		delete _virtualPad;
+		_virtualPad = NULL;
 	}
     if (_buttplugDevice) {
-		_buttplugDevice->setVibrate(0);
-        System::Sleep(500);
+        _buttplugDevice->setVibrate(0, 0);
+        System::Sleep(250);
     }
 }
 
@@ -249,11 +367,57 @@ void __cdecl SteamPlugMain::atProgramExitFunc() {
     s_MainInstance->atProgramExit();
 }
 
+
+// Examining device DB:BB:93:3B:2D:05 - 47L121000 - looks like a Coyote 3.0!
+/*
+Discovery success! DB:BB:93:3B:2D:05
+Trying Connect to Buttplug device...
+RCV: 53 00 93 3B 2D 05
+ => UNKNOWN.
+Connection status change = 2
+Connection succeeded
+Bat = 100
+RCV: B1 00 01 00
+ => Confirm: Seq=00, ChA=  1, ChB=  0
+RCV: B1 01 01 00
+ => Confirm: Seq=01, ChA=  1, ChB=  0
+RCV: B1 02 01 00
+ => Confirm: Seq=02, ChA=  1, ChB=  0
+RCV: B1 03 01 00
+ => Confirm: Seq=03, ChA=  1, ChB=  0
+RCV: B1 04 01 00*/
 int main() {
     SetConsoleTitle("Buttplug for Steam X360 emulation");
     enableVirtualTerminalMode();
     setTerminalCursorVisibility(false);
+#if 0
+    BtAddress devAddress = getCoyote();
+    if (devAddress) {
+        printf("Discovery success! %s\n", Mac2String(devAddress).c_str());
+        CoyoteDevice coyote(devAddress);
+        coyote.connect();
+        coyote.waitForConnection();
+        printf("Connection succeeded\n");
+        printf("Bat = %d\n", coyote.getBatteryLevel());
 
+        System::Sleep(1000);
+        printf("Setting global settings.\n");
+        coyote.sendGlobalSettings(100, 100, 255, 255, 255, 255);
+        System::Sleep(1000);
+
+        for (int i = 0; i < 50; i++) {
+            coyote.sendCommand(i, i);
+            coyote.waitForWaveformConfirmation();
+            //System::Sleep(200);
+        }
+    } else
+        printf("Discovery fail\n");
+
+    printf("Done.\n");
+    getchar();
+
+    return 0;
+#endif
 	SteamPlugMain main;
 	main.run();
 

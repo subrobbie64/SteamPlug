@@ -149,9 +149,9 @@ namespace System {
 	}
 
 	int WaitSema(syssema_t* sema, int waitMillis) {
-		if (WaitForSingleObject(*sema, waitMillis) == WAIT_TIMEOUT)
-			return SEMA_TIMEOUT;
-		return 0;
+		if (WaitForSingleObject(*sema, waitMillis) == WAIT_OBJECT_0)
+			return 0;
+		return SEMA_TIMEOUT;
 	}
 
 	void SignalSema(syssema_t* sema) {
@@ -161,14 +161,6 @@ namespace System {
 	void DestroySema(syssema_t* sema) {
 		CloseHandle(*sema);
 	}
-
-	void setupInputIO(int pin) {
-	}
-
-	bool readInputIO(int pin) {
-		return true;
-	}
-
 
 	sysevent_t CreateEventFlag() {
 		return ::CreateEvent(NULL, FALSE, FALSE, NULL); // auto reset, initially not signaled
@@ -188,5 +180,9 @@ namespace System {
 
 	bool WaitEvent(sysevent_t event, int timeOutMillis) {
 		return WaitForSingleObject(event, timeOutMillis) != WAIT_TIMEOUT;
+	}
+
+	void DestroyEventFlag(sysevent_t event) {
+		CloseHandle(event);
 	}
 }

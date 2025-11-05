@@ -1,5 +1,7 @@
-#include "ButtplugConfig.h"
 #include <stdio.h>
+#include "ButtplugConfig.h"
+#include "ButtplugDevice.h"
+#include "System.h"
 
 #define BUTTPLUG_WEIGHT_LEFT (13 * 5)
 #define BUTTPLUG_WEIGHT_RIGHT (7 * 5)
@@ -12,17 +14,15 @@ ButtplugConfig::ButtplugConfig(BtAddress macAddress, int type) : _macAddress(mac
 ButtplugConfig::ButtplugConfig(BtAddress macAddress, int type, int vibrateLeft, int vibrateRight) : _macAddress(macAddress), _type(type), _vibrateLeft(vibrateLeft), _vibrateRight(vibrateRight) {
 }
 
-BtAddress ButtplugConfig::getMacAddress() {
+BtAddress ButtplugConfig::getMacAddress() const {
 	return _macAddress;
 }
 
-const ButtplugDeviceDefinition* ButtplugConfig::getButtplugDefinition() {
-	if ((_type < 0) || (_type >= ButtplugDiscovery::NUM_HUSH_DEVICES))
-		return NULL;
-	return &ButtplugDiscovery::HUSH_DEVICE[_type];
+int ButtplugConfig::getType() const {
+	return _type;
 }
 
-void ButtplugConfig::getVibration(int* vibrateLeft, int* vibrateRight) {
+void ButtplugConfig::getVibration(int* vibrateLeft, int* vibrateRight) const {
 	*vibrateLeft = _vibrateLeft;
 	*vibrateRight = _vibrateRight;
 }
@@ -32,7 +32,7 @@ void ButtplugConfig::setVibration(int vibrateLeft, int vibrateRight) {
 	_vibrateRight = vibrateRight;
 }
 
-void ButtplugConfig::toFile() {
+void ButtplugConfig::toFile() const {
 	FILE* outf = fopen(CFG_FILENAME, "w");
 	if (outf) {
 		unsigned char* address = (unsigned char*)&_macAddress;
@@ -58,9 +58,11 @@ BtAddress getBtAddressFromString(const char* str) {
 }
 
 ButtplugConfig *ButtplugConfig::fromFile() {
+	ButtplugConfig* resultConfig = NULL;
+
 	FILE* file = fopen(CFG_FILENAME, "r");
-	char line[256];
 	if (file) {
+		char line[256];
 		if (fgets(line, sizeof(line), file) && (strlen(line) >= 19)) {
 			BtAddress macAddress = getBtAddressFromString(line);
 			int type = (int)strtoul(line + 18, NULL, 10);
@@ -73,16 +75,11 @@ ButtplugConfig *ButtplugConfig::fromFile() {
 					vibrateRight = atoi(line);
 				}
 			}
-			fclose(file);
 
-			if ((macAddress == 0) || (type < 0) || (type >= ButtplugDiscovery::NUM_HUSH_DEVICES)) {
-				return NULL;
-			}
-			return new ButtplugConfig(macAddress, type, vibrateLeft, vibrateRight);
+			if (macAddress && (type >= 0) && (type < ButtplugDevice::NUM_HUSH_DEVICES))
+				resultConfig = new ButtplugConfig(macAddress, type, vibrateLeft, vibrateRight);
 		}
 		fclose(file);
-	};
-	return NULL;
+	}
+	return resultConfig;
 }
-
-
