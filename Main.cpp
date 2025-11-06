@@ -269,7 +269,6 @@ void SteamPlugMain::run() {
                     testing = true;
                 else if (keyToAction(key, &adjustLeft, &adjustRight))
                     _buttplugDevice->adjustVibration(adjustLeft, adjustRight);
-                    //_virtualPad->adjustRumble(adjustLeft, adjustRight);
 #ifndef USE_HUSH2
 				else if (keyToCoyoteAction(key, &adjustChA, &adjustChB)) {
                     _coyoteChannelA = std::clamp(_coyoteChannelA + adjustChA, 0, 100);
@@ -367,25 +366,6 @@ void __cdecl SteamPlugMain::atProgramExitFunc() {
     s_MainInstance->atProgramExit();
 }
 
-
-// Examining device DB:BB:93:3B:2D:05 - 47L121000 - looks like a Coyote 3.0!
-/*
-Discovery success! DB:BB:93:3B:2D:05
-Trying Connect to Buttplug device...
-RCV: 53 00 93 3B 2D 05
- => UNKNOWN.
-Connection status change = 2
-Connection succeeded
-Bat = 100
-RCV: B1 00 01 00
- => Confirm: Seq=00, ChA=  1, ChB=  0
-RCV: B1 01 01 00
- => Confirm: Seq=01, ChA=  1, ChB=  0
-RCV: B1 02 01 00
- => Confirm: Seq=02, ChA=  1, ChB=  0
-RCV: B1 03 01 00
- => Confirm: Seq=03, ChA=  1, ChB=  0
-RCV: B1 04 01 00*/
 int main() {
     SetConsoleTitle("Buttplug for Steam X360 emulation");
     enableVirtualTerminalMode();

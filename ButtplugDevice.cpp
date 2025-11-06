@@ -97,7 +97,7 @@ void ButtplugDevice::connect() {
 	_connectRetryAt = System::GetMicros() + CONNECT_RETRY_MS * 1000;
 	_vibration = 0;
 
-	debug("Trying Connect to Buttplug device...\n");
+	debug("Trying to connect to Buttplug device...\n");
 	CwclBluetoothRadio* Radio;
 	int Res = _wclBluetoothManager.GetLeRadio(Radio);
 	if (Res != WCL_E_SUCCESS)
