@@ -16,9 +16,12 @@ CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	
 	_strengthSerial = 0;
 	_expectedSerial = 0xFF;
-	_channelStrength[0] = _channelStrength[1] = 0;
 	_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
-	_levelA = _levelB = _currentPercentage = 0;
+	int chA, chB;
+	config.getChannels(&chA, &chB);
+	_levelA = chA;
+	_levelB = chB;
+	_currentPercentage = 0;
 	_batteryLevel = 0;
 
 	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &CoyoteDevice::wclGattClientConnect);
@@ -30,7 +33,7 @@ CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	if (res != WCL_E_SUCCESS)
 		error("Error opening Bluetooth manager: 0x%X", res);
 
-	_wclGattClient.Address = config.getMacAddress();
+	_wclGattClient.Address = config.getCoyoteAddress();
 	_wclGattClient.ConnectOnRead = true;
 	_wclGattClient.ForceNotifications = false;
 
@@ -92,7 +95,6 @@ void CoyoteDevice::wclGattClientConnect(void* Sender, const int Error) {
 		else {
 			_strengthSerial = 0;
 			_expectedSerial = 0xFF;
-			_channelStrength[0] = _channelStrength[1] = 0;
 			_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
 			_levelA = _levelB = _currentPercentage = 0;
 			
@@ -144,7 +146,6 @@ void CoyoteDevice::wclGattClientCharacteristicChanged(void* Sender, const unsign
 	}
 }
 
-
 enum SetChannelStrenthMethod {
 	SCSM_NO_CHANGE = 0,
 	SCSM_INCREASE = 1,
@@ -169,9 +170,16 @@ struct ChannelWaveform { // 4x 25ms
 	unsigned char intensity[4]; // 0 ~ 100
 };
 
-void CoyoteDevice::configVibrate(unsigned char levelA, unsigned char levelB) {
-	_levelA = levelA;
-	_levelB = levelB;
+void CoyoteDevice::adjustChannelIntensity(int levelA, int levelB) {
+	const int maxIntensity = _config.enableCoyote200() ? 200 : 100;
+	int a, b;
+	_config.getChannels(&a, &b);
+	a += levelA;
+	b += levelB;
+	_levelA = (unsigned char)std::clamp(a, 0, maxIntensity);
+	_levelB = (unsigned char)std::clamp(b, 0, maxIntensity);
+	_config.setChannels(_levelA, _levelB);
+	_config.toFile();
 }
 
 void CoyoteDevice::getConfigVibrate(int* levelA, int* levelB) {
@@ -192,17 +200,17 @@ void CoyoteDevice::streamThread() {
 			unsigned char commandBuf[20];
 			commandBuf[0] = 0xB0;
 			commandBuf[1] = commandBuf[2] = commandBuf[3] = 0x00;
-			if ((_channelStrength[0] != _confirmedChannelStrength[0]) || (_channelStrength[1] != _confirmedChannelStrength[1])) {
+			if ((_levelA != _confirmedChannelStrength[0]) || (_levelB != _confirmedChannelStrength[1])) {
 				_expectedSerial = 1 + (_strengthSerial % 0xF);
 				_strengthSerial++;
 				commandBuf[1] = (_expectedSerial << 4);
-				if (_channelStrength[0] != _confirmedChannelStrength[0]) {
+				if (_levelA != _confirmedChannelStrength[0]) {
 					commandBuf[1] |= SCSM_ABSOLUTE << 2;
-					commandBuf[2] = _channelStrength[0];
+					commandBuf[2] = _levelA;
 				}
-				if (_channelStrength[1] != _confirmedChannelStrength[1]) {
+				if (_levelB != _confirmedChannelStrength[1]) {
 					commandBuf[1] |= SCSM_ABSOLUTE << 0;
-					commandBuf[3] = _channelStrength[1];
+					commandBuf[3] = _levelB;
 				}
 			}
 
@@ -241,18 +249,14 @@ void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChL
 	unsigned char commandBuf[7];
 	commandBuf[0] = 0xBF;
 	// Channel limits 0~200
-	commandBuf[1] = _channelStrength[0] = aChLimit;
-	commandBuf[2] = _channelStrength[1] = bChLimit;
+	commandBuf[1] = aChLimit;
+	commandBuf[2] = bChLimit;
 	// 0~255, the larger the value, the stronger the impact of the lower frequencies
 	commandBuf[3] = aChFreqBalance;
 	commandBuf[4] = bChFreqBalance;
 	// 0~255, the pulse width. the larger the value, the stronger the impact of the lower frequencies
 	commandBuf[5] = aChFreqIntensity;
 	commandBuf[6] = bChFreqIntensity;
-	/*printf("SEND: ");
-	for (unsigned long i = 0; i < 7; i++)
-		printf("%02X ", commandBuf[i]);
-	printf("\n");*/
 	_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 7, plNone, wkWithoutResponse);
 }
 

@@ -59,7 +59,7 @@ void CoyoteDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetooth
 	}
 }
 
-BtAddress CoyoteDiscovery::runDiscovery() {
+ButtplugConfig* CoyoteDiscovery::runDiscovery() {
 	System::ResetEvent(_discoveryCompletedEvent);
 
 	int Res = getRadio()->Discover(10, dkBle);
@@ -68,7 +68,7 @@ BtAddress CoyoteDiscovery::runDiscovery() {
 
 	System::WaitEvent(_discoveryCompletedEvent);
 
-	return _discoveredCoyoteAddress;
+	return new ButtplugConfig(0, _discoveredCoyoteAddress, 0);
 }
 
 void CoyoteDiscovery::wclBluetoothManagerDiscoveringCompleted(void* Sender, CwclBluetoothRadio* const Radio, const int Error) {

@@ -9,10 +9,15 @@ class ButtplugConfig;
 
 class ButtplugDiscovery {
 public:
-	ButtplugDiscovery();
-	~ButtplugDiscovery();
+	virtual ButtplugConfig* runDiscovery() = 0;
+};
 
-	ButtplugConfig* runDiscovery();
+class Hush2ButtplugDiscovery : public ButtplugDiscovery {
+public:
+	Hush2ButtplugDiscovery();
+	~Hush2ButtplugDiscovery();
+
+	virtual ButtplugConfig* runDiscovery();
 private:
 	CwclBluetoothRadio* getRadio();
 	void wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio, const __int64 Address);

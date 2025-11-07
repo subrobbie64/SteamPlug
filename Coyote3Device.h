@@ -15,7 +15,7 @@ public:
 	virtual bool isConnected();
 
 	void sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity);
-	void configVibrate(unsigned char levelA, unsigned char levelB);
+	void adjustChannelIntensity(int levelA, int levelB);
 	void getConfigVibrate(int* levelA, int* levelB);
 	virtual void setVibrate(unsigned char effectiveVibrationPercent);
 
@@ -55,7 +55,7 @@ private:
 	volatile unsigned char _levelA, _levelB;
 	volatile int _currentPercentage;
 
-	unsigned char _strengthSerial, _expectedSerial, _channelStrength[2], _confirmedChannelStrength[2];
+	unsigned char _strengthSerial, _expectedSerial, _confirmedChannelStrength[2];
 
 	unsigned char _batteryLevel;
 

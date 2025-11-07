@@ -74,7 +74,7 @@ ButtplugDevice::ButtplugDevice(ButtplugConfig& config)
 	if (res != WCL_E_SUCCESS)
 		error("Error opening Bluetooth manager: 0x%X", res);
 
-	_wclGattClient.Address = config.getMacAddress();
+	_wclGattClient.Address = config.getHushAddress();
 	_wclGattClient.ConnectOnRead = true;
 	_wclGattClient.ForceNotifications = false;
 }

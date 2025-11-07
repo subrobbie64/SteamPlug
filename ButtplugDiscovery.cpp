@@ -2,15 +2,15 @@
 #include "ButtplugConfig.h"
 #pragma warning(disable: 4244)
 
-ButtplugDiscovery::ButtplugDiscovery() : _discoveredHushDevice(0), _discoveredHushDeviceType(-1) {
+Hush2ButtplugDiscovery::Hush2ButtplugDiscovery() : _discoveredHushDevice(0), _discoveredHushDeviceType(-1) {
 	_discoveryCompletedEvent = System::CreateEventFlag();
 
-	__hook(&CwclBluetoothManager::OnDeviceFound, &_wclBluetoothManager, &ButtplugDiscovery::wclBluetoothManagerDeviceFound);
-	__hook(&CwclBluetoothManager::OnDiscoveringCompleted, &_wclBluetoothManager, &ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted);
-	__hook(&CwclBluetoothManager::OnDiscoveringStarted, &_wclBluetoothManager, &ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted);
+	__hook(&CwclBluetoothManager::OnDeviceFound, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDeviceFound);
+	__hook(&CwclBluetoothManager::OnDiscoveringCompleted, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted);
+	__hook(&CwclBluetoothManager::OnDiscoveringStarted, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted);
 
-	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &ButtplugDiscovery::wclGattClientConnect);
-	__hook(&CwclGattClient::OnDisconnect, &_wclGattClient, &ButtplugDiscovery::wclGattClientDisconnect);
+	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &Hush2ButtplugDiscovery::wclGattClientConnect);
+	__hook(&CwclGattClient::OnDisconnect, &_wclGattClient, &Hush2ButtplugDiscovery::wclGattClientDisconnect);
 
 	_wclBluetoothManager.SetMessageProcessing(mpAsync);
 
@@ -19,18 +19,18 @@ ButtplugDiscovery::ButtplugDiscovery() : _discoveredHushDevice(0), _discoveredHu
 		error("Error opening Bluetooth manager: 0x%X", res);
 }
 
-ButtplugDiscovery::~ButtplugDiscovery() {
-	__unhook(&CwclBluetoothManager::OnDeviceFound, &_wclBluetoothManager, &ButtplugDiscovery::wclBluetoothManagerDeviceFound);
-	__unhook(&CwclBluetoothManager::OnDiscoveringCompleted, &_wclBluetoothManager, &ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted);
-	__unhook(&CwclBluetoothManager::OnDiscoveringStarted, &_wclBluetoothManager, &ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted);
+Hush2ButtplugDiscovery::~Hush2ButtplugDiscovery() {
+	__unhook(&CwclBluetoothManager::OnDeviceFound, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDeviceFound);
+	__unhook(&CwclBluetoothManager::OnDiscoveringCompleted, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted);
+	__unhook(&CwclBluetoothManager::OnDiscoveringStarted, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted);
 
-	__unhook(&CwclGattClient::OnConnect, &_wclGattClient, &ButtplugDiscovery::wclGattClientConnect);
-	__unhook(&CwclGattClient::OnDisconnect, &_wclGattClient, &ButtplugDiscovery::wclGattClientDisconnect);
+	__unhook(&CwclGattClient::OnConnect, &_wclGattClient, &Hush2ButtplugDiscovery::wclGattClientConnect);
+	__unhook(&CwclGattClient::OnDisconnect, &_wclGattClient, &Hush2ButtplugDiscovery::wclGattClientDisconnect);
 
 	System::DestroyEventFlag(_discoveryCompletedEvent);
 }
 
-CwclBluetoothRadio* ButtplugDiscovery::getRadio() {
+CwclBluetoothRadio* Hush2ButtplugDiscovery::getRadio() {
 	CwclBluetoothRadio* Radio;
 	const int Res = _wclBluetoothManager.GetLeRadio(Radio);
 	if (Res != WCL_E_SUCCESS)
@@ -38,7 +38,7 @@ CwclBluetoothRadio* ButtplugDiscovery::getRadio() {
 	return Radio;
 }
 
-void ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted(void* Sender, CwclBluetoothRadio* const Radio) {
+void Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted(void* Sender, CwclBluetoothRadio* const Radio) {
 	_discoveredHushDevice = 0;
 	_discoveredHushDeviceType = -1;
 	_discoveredHushName.clear();
@@ -47,7 +47,7 @@ void ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted(void* Sender, Cwcl
 	log("Starting Bluetooth Discovery...\n");
 }
 
-void ButtplugDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio, const __int64 Address) {
+void Hush2ButtplugDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio, const __int64 Address) {
 	const std::string macAddressStr = Mac2String(Address);
 	wclBluetoothDeviceType DevType = dtMixed;
 	const int Res = Radio->GetRemoteDeviceType(Address, DevType);
@@ -61,7 +61,7 @@ void ButtplugDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoo
 	}
 }
 
-ButtplugConfig* ButtplugDiscovery::runDiscovery() {
+ButtplugConfig* Hush2ButtplugDiscovery::runDiscovery() {
 	System::ResetEvent(_discoveryCompletedEvent);
 
 	const int Res = getRadio()->Discover(10, dkBle);
@@ -72,10 +72,10 @@ ButtplugConfig* ButtplugDiscovery::runDiscovery() {
 
 	if (_discoveredHushDevice == 0)
 		return NULL;
-	return new ButtplugConfig(_discoveredHushDevice, _discoveredHushDeviceType);
+	return new ButtplugConfig(_discoveredHushDevice, 0, _discoveredHushDeviceType);
 }
 
-void ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted(void* Sender, CwclBluetoothRadio* const Radio, const int Error) {
+void Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted(void* Sender, CwclBluetoothRadio* const Radio, const int Error) {
 	if (Error != WCL_E_SUCCESS)
 		error("\nDiscovery completed with error 0x%X!\n", Error);
 	else
@@ -87,7 +87,7 @@ void ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted(void* Sender, Cw
 	inspectNextDevice();
 }
 
-void ButtplugDiscovery::inspectNextDevice() {
+void Hush2ButtplugDiscovery::inspectNextDevice() {
 	if (_discoveredDevices.empty()) {
 		log("\nInspecting devices complete\n");
 		System::SetEvent(_discoveryCompletedEvent);
@@ -104,7 +104,7 @@ void ButtplugDiscovery::inspectNextDevice() {
 		log("Connect error 0x%X\n", Res);
 }
 
-void ButtplugDiscovery::wclGattClientConnect(void* Sender, const int Error) {
+void Hush2ButtplugDiscovery::wclGattClientConnect(void* Sender, const int Error) {
 	const BtAddress Address = ((CwclGattClient*)Sender)->Address;
 	log("Examining device %s", Mac2String(Address).c_str());
 
@@ -133,14 +133,14 @@ void ButtplugDiscovery::wclGattClientConnect(void* Sender, const int Error) {
 	log("\n");
 }
 
-void ButtplugDiscovery::wclGattClientDisconnect(void* Sender, const int Reason) {
+void Hush2ButtplugDiscovery::wclGattClientDisconnect(void* Sender, const int Reason) {
 	if (_discoveredHushDevice)
 		System::SetEvent(_discoveryCompletedEvent);
 	else
 		inspectNextDevice();
 }
 
-int ButtplugDiscovery::getHushDeviceType(BtAddress address, wclGattServices& services) {
+int Hush2ButtplugDiscovery::getHushDeviceType(BtAddress address, wclGattServices& services) {
 	for (wclGattService& service : services) {
 		if (service.Uuid.IsShortUuid)
 			continue;

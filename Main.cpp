@@ -17,8 +17,6 @@
 #define PLUG_BATTERY_LEVEL_CRITICAL 10
 #define RUMBLE_STEP 2
 
-//#define USE_HUSH2
-
 #include "Coyote3Discovery.h"
 #include "Coyote3Device.h"
 
@@ -64,8 +62,6 @@ private:
     AbstractButtDevice* _buttplugDevice;
     CoyoteDevice* _coyoteDevice;
 
-    int _coyoteChannelA, _coyoteChannelB;
-
     VirtualPad* _virtualPad;
 
     unsigned long long _waitPadDetection;
@@ -79,33 +75,26 @@ SteamPlugMain::SteamPlugMain() : _buttplugConfig(NULL), _buttplugDevice(NULL), _
     s_MainInstance = this;
     atexit(atProgramExitFunc);
     
-    _coyoteChannelA = _coyoteChannelB = 0;
     _waitPadDetection = 0;
 }
 
 SteamPlugMain::~SteamPlugMain() {
 }
 
-extern BtAddress getBtAddressFromString(const char* str);
-ButtplugConfig *getCoyote() {
-    return new ButtplugConfig(getBtAddressFromString("DB:BB:93:3B:2D:05"), 0);
-    /*
-    CoyoteDiscovery coyDiscovery;
-    BtAddress devAddress = coyDiscovery.runDiscovery();
-    if (devAddress)
-        printf("Discovery success! %s\n", Mac2String(devAddress).c_str());
-    return devAddress;*/
-}
-
 void SteamPlugMain::openButtplugDevice() {
     _buttplugConfig = ButtplugConfig::fromFile();
     if (_buttplugConfig == NULL) {
         log("No Buttplug address found in config, running Discovery!\n");
-
-        ButtplugDiscovery discovery;
+#ifdef USE_HUSH2
+		log("Looking for Hush 2 devices...\n");
+        Hush2ButtplugDiscovery discovery;
+#else
+		log("Looking for Coyote 3.0 devices...\n");
+		CoyoteDiscovery discovery;
+#endif
         _buttplugConfig = discovery.runDiscovery();
 		if (_buttplugConfig == NULL)
-            error("No Buttplug device found!\n");
+            error("No device found!\n");
         _buttplugConfig->toFile();
 
         Sleep(3000);
@@ -114,12 +103,11 @@ void SteamPlugMain::openButtplugDevice() {
     }
 
 #ifdef USE_HUSH2
-    log("Trying to connect Buttplug at %s...", Mac2String(_buttplugConfig->getMacAddress()).c_str());
+    log("Trying to connect Buttplug at %s...", Mac2String(_buttplugConfig->getHushAddress()).c_str());
     _buttplugDevice = new ButtplugDevice(*_buttplugConfig);
 #else
-    ButtplugConfig* cfg = getCoyote();
-    log("Trying to connect Coyote 3.0 at %s...", Mac2String(cfg->getMacAddress()).c_str());
-    _coyoteDevice = new CoyoteDevice(*cfg);
+    log("Trying to connect Coyote 3.0 at %s...", Mac2String(_buttplugConfig->getCoyoteAddress()).c_str());
+    _coyoteDevice = new CoyoteDevice(*_buttplugConfig);
     _buttplugDevice = _coyoteDevice;
 #endif
     _buttplugDevice->connect();
@@ -127,10 +115,9 @@ void SteamPlugMain::openButtplugDevice() {
         System::Sleep(1000);
 	log("%s connected.\n", _buttplugDevice->getDeviceName().c_str());
 #ifndef USE_HUSH2
-    _coyoteDevice->sendGlobalSettings(40, 40, 255, 255, 255, 255);
+	const int maxLimit = _buttplugConfig->enableCoyote200() ? 200 : 100;
+    _coyoteDevice->sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
     System::Sleep(500);
-    _coyoteChannelA = 25;
-    _coyoteChannelB = 25;
 #endif
 
     _buttplugDevice->setVibrate(40, 40);
@@ -264,17 +251,14 @@ void SteamPlugMain::run() {
         if ((cycleCount % 5) == 0) {
             if (_kbhit() || (cycleCount == 0)) {
 				int key = _kbhit() ? _getch() : 0;
-				int adjustLeft, adjustRight, adjustChA, adjustChB;
+                int adjustLeft, adjustRight;
                 if (key == 't')
                     testing = true;
                 else if (keyToAction(key, &adjustLeft, &adjustRight))
                     _buttplugDevice->adjustVibration(adjustLeft, adjustRight);
 #ifndef USE_HUSH2
-				else if (keyToCoyoteAction(key, &adjustChA, &adjustChB)) {
-                    _coyoteChannelA = std::clamp(_coyoteChannelA + adjustChA, 0, 100);
-                    _coyoteChannelB = std::clamp(_coyoteChannelB + adjustChB, 0, 100);
-                    _coyoteDevice->configVibrate((unsigned char)_coyoteChannelA, (unsigned char)_coyoteChannelB);
-                }
+				else if (keyToCoyoteAction(key, &adjustLeft, &adjustRight))
+                    _coyoteDevice->adjustChannelIntensity(adjustLeft, adjustRight);
 #endif
 
                 int cols, rows;
@@ -286,7 +270,9 @@ void SteamPlugMain::run() {
                 printXy(cols - 20, LINE_KEY_HELP + 1, WHITE, "O/L: Left, +/-: Right");
                 printXy(cols - 20, LINE_KEY_HELP + 2, WHITE, "T: Test Vibrations");
 #ifndef USE_HUSH2
-                printXy(cols - 40, LINE_KEY_HELP + 0, WHITE, "Ch A/B: \x1B[%02Xm%3d%% / %3d%%", YELLOW, _coyoteChannelA, _coyoteChannelB);
+                int coyoteChannelA, coyoteChannelB;
+				_buttplugConfig->getChannels(&coyoteChannelA, &coyoteChannelB);
+                printXy(cols - 40, LINE_KEY_HELP + 0, WHITE, "Ch A/B: \x1B[%02Xm%3d%% / %3d%%", YELLOW, coyoteChannelA, coyoteChannelB);
                 printXy(cols - 40, LINE_KEY_HELP + 1, WHITE, "Q/A: Ch A, W/S: Ch B");
 #endif
             }
@@ -370,35 +356,8 @@ int main() {
     SetConsoleTitle("Buttplug for Steam X360 emulation");
     enableVirtualTerminalMode();
     setTerminalCursorVisibility(false);
-#if 0
-    BtAddress devAddress = getCoyote();
-    if (devAddress) {
-        printf("Discovery success! %s\n", Mac2String(devAddress).c_str());
-        CoyoteDevice coyote(devAddress);
-        coyote.connect();
-        coyote.waitForConnection();
-        printf("Connection succeeded\n");
-        printf("Bat = %d\n", coyote.getBatteryLevel());
 
-        System::Sleep(1000);
-        printf("Setting global settings.\n");
-        coyote.sendGlobalSettings(100, 100, 255, 255, 255, 255);
-        System::Sleep(1000);
-
-        for (int i = 0; i < 50; i++) {
-            coyote.sendCommand(i, i);
-            coyote.waitForWaveformConfirmation();
-            //System::Sleep(200);
-        }
-    } else
-        printf("Discovery fail\n");
-
-    printf("Done.\n");
-    getchar();
-
-    return 0;
-#endif
-	SteamPlugMain main;
+    SteamPlugMain main;
 	main.run();
 
 	return 0;

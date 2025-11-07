@@ -32,14 +32,13 @@ public:
 	AbstractButtDevice(ButtplugConfig& config);
 	virtual void connect() = 0;
 	virtual bool isConnected() = 0;
+	virtual const std::string& getDeviceName() const = 0;
 
 	void adjustVibration(int bySmallRumble, int byBigRumble);
 	void setVibrate(unsigned char smallRumble, unsigned char bigRumble);
 	int getEffectiveVibration() const;
 
 	virtual int getBatteryLevel() const = 0;
-
-	virtual const std::string& getDeviceName() const = 0;
 
 	GenericProperty _smallRumbleIntensity, _bigRumbleIntensity;
 protected:
@@ -56,13 +55,13 @@ public:
 
 	virtual void connect();
 	virtual bool isConnected();
+	virtual const std::string& getDeviceName() const;
 
 	virtual void setVibrate(unsigned char effectiveVibrationPercent);
 	virtual int getBatteryLevel() const;
 	bool readBatteryLevel();
 	
 	const std::string& getDeviceId() const;
-	virtual const std::string& getDeviceName() const;
 
 	static const ButtplugDeviceDefinition HUSH_DEVICE[];
 	static const int NUM_HUSH_DEVICES;

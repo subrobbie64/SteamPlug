@@ -1,16 +1,17 @@
 #pragma once
 #include "Coyote3Device.h"
 #include "System.h"
+#include "ButtplugDiscovery.h"
 #include <deque>
 
 using namespace wclBluetooth;
 
-class CoyoteDiscovery {
+class CoyoteDiscovery : public ButtplugDiscovery {
 public:
 	CoyoteDiscovery();
 	~CoyoteDiscovery();
 
-	BtAddress runDiscovery();
+	virtual ButtplugConfig* runDiscovery();
 private:
 	CwclBluetoothRadio* getRadio();
 	void wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio, const __int64 Address);
