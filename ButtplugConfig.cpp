@@ -6,7 +6,7 @@
 #define BUTTPLUG_WEIGHT_LEFT (13 * 5)
 #define BUTTPLUG_WEIGHT_RIGHT (7 * 5)
 
-const char* ButtplugConfig::CFG_FILENAME = "SteamPlug.cfg";
+const char* ButtplugConfig::CFG_FILENAME = "SteamPlug64.cfg";
 
 ButtplugConfig::ButtplugConfig(BtAddress hushAddress, BtAddress coyoteAddress, int type) 
 	: _hushAddress(hushAddress), _coyoteAddress(coyoteAddress), _type(type), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(0), _channelB(0) {
