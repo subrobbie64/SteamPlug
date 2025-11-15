@@ -56,7 +56,7 @@ int AbstractButtDevice::getEffectiveVibration() const {
 ButtplugDevice::ButtplugDevice(ButtplugConfig& config)
 	: AbstractButtDevice(config), _buttplugService(), _rxCharac(), _txCharac(), _status(BP_DISCONNECTED), _deviceId(), _deviceName() {
 
-	_definition = &HUSH_DEVICE[config.getType()];
+	_definition = &HUSH_DEVICE[config.getHushType()];
 
 	_vibration = 0;
 	_batteryLevel = 0;

@@ -20,6 +20,8 @@ Hush2ButtplugDiscovery::Hush2ButtplugDiscovery() : _discoveredHushDevice(0), _di
 }
 
 Hush2ButtplugDiscovery::~Hush2ButtplugDiscovery() {
+	_wclBluetoothManager.Close();
+
 	__unhook(&CwclBluetoothManager::OnDeviceFound, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDeviceFound);
 	__unhook(&CwclBluetoothManager::OnDiscoveringCompleted, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted);
 	__unhook(&CwclBluetoothManager::OnDiscoveringStarted, &_wclBluetoothManager, &Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringStarted);
@@ -61,7 +63,7 @@ void Hush2ButtplugDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBl
 	}
 }
 
-ButtplugConfig* Hush2ButtplugDiscovery::runDiscovery() {
+bool Hush2ButtplugDiscovery::runDiscovery(ButtplugConfig* config) {
 	System::ResetEvent(_discoveryCompletedEvent);
 
 	const int Res = getRadio()->Discover(10, dkBle);
@@ -70,9 +72,13 @@ ButtplugConfig* Hush2ButtplugDiscovery::runDiscovery() {
 
 	System::WaitEvent(_discoveryCompletedEvent);
 
-	if (_discoveredHushDevice == 0)
-		return NULL;
-	return new ButtplugConfig(_discoveredHushDevice, 0, _discoveredHushDeviceType);
+	if (_discoveredHushDevice > 0) {
+		config->setHushAddress(_discoveredHushDevice);
+		config->setHushType(_discoveredHushDeviceType);
+		return true;
+	} else
+		log("No Hush devices discovered.\n");
+	return false;
 }
 
 void Hush2ButtplugDiscovery::wclBluetoothManagerDiscoveringCompleted(void* Sender, CwclBluetoothRadio* const Radio, const int Error) {

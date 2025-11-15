@@ -51,7 +51,7 @@ private:
 class ButtplugDevice : public AbstractButtDevice {
 public:
 	ButtplugDevice(ButtplugConfig& config);
-	~ButtplugDevice();
+	virtual ~ButtplugDevice();
 
 	virtual void connect();
 	virtual bool isConnected();

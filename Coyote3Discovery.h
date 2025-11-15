@@ -11,7 +11,7 @@ public:
 	CoyoteDiscovery();
 	~CoyoteDiscovery();
 
-	virtual ButtplugConfig* runDiscovery();
+	virtual bool runDiscovery(ButtplugConfig* config);
 private:
 	CwclBluetoothRadio* getRadio();
 	void wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio, const __int64 Address);

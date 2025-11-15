@@ -8,8 +8,12 @@
 
 const char* ButtplugConfig::CFG_FILENAME = "SteamPlug64.cfg";
 
+ButtplugConfig::ButtplugConfig() 
+	: _hushAddress(0), _coyoteAddress(0), _type(-1), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
+}
+
 ButtplugConfig::ButtplugConfig(BtAddress hushAddress, BtAddress coyoteAddress, int type) 
-	: _hushAddress(hushAddress), _coyoteAddress(coyoteAddress), _type(type), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(0), _channelB(0) {
+	: _hushAddress(hushAddress), _coyoteAddress(coyoteAddress), _type(type), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
 }
 
 ButtplugConfig::ButtplugConfig(BtAddress hushAddress, int type, int vibrateLeft, int vibrateRight, BtAddress coyoteAddress, bool enable200, int channelA, int channelB) 
@@ -20,16 +24,32 @@ BtAddress ButtplugConfig::getHushAddress() const {
 	return _hushAddress;
 }
 
+void ButtplugConfig::setHushAddress(BtAddress address) {
+	_hushAddress = address;
+}
+
 BtAddress ButtplugConfig::getCoyoteAddress() const {
 	return _coyoteAddress;
 }
 
-int ButtplugConfig::getType() const {
+void ButtplugConfig::setCoyoteAddress(BtAddress address) {
+	_coyoteAddress = address;
+}
+
+int ButtplugConfig::getHushType() const {
 	return _type;
+}
+
+void ButtplugConfig::setHushType(int type) {
+	_type = type;
 }
 
 bool ButtplugConfig::enableCoyote200() const {
 	return _enableCoyote200;
+}
+
+void ButtplugConfig::setEnableCoyote200(bool enable) {
+	_enableCoyote200 = enable;
 }
 
 void ButtplugConfig::getChannels(int* channelA, int* channelB) const {
@@ -42,6 +62,14 @@ void ButtplugConfig::setChannels(int channelA, int channelB) {
 	_channelB = channelB;
 }
 
+void ButtplugConfig::setChannelA(int channelA) {
+	_channelA = channelA;
+}
+
+void ButtplugConfig::setChannelB(int channelB) {
+	_channelB = channelB;
+}
+
 void ButtplugConfig::getVibration(int* vibrateLeft, int* vibrateRight) const {
 	*vibrateLeft = _vibrateLeft;
 	*vibrateRight = _vibrateRight;
@@ -49,6 +77,14 @@ void ButtplugConfig::getVibration(int* vibrateLeft, int* vibrateRight) const {
 
 void ButtplugConfig::setVibration(int vibrateLeft, int vibrateRight) {
 	_vibrateLeft = vibrateLeft;
+	_vibrateRight = vibrateRight;
+}
+
+void ButtplugConfig::setVibrateLeft(int vibrateLeft) {
+	_vibrateLeft = vibrateLeft;
+}
+
+void ButtplugConfig::setVibrateRight(int vibrateRight) {
 	_vibrateRight = vibrateRight;
 }
 
@@ -83,36 +119,38 @@ BtAddress getBtAddressFromString(const char* str) {
 }
 
 ButtplugConfig *ButtplugConfig::fromFile() {
-	ButtplugConfig* resultConfig = NULL;
-
+	ButtplugConfig* config = new ButtplugConfig();
 	FILE* file = fopen(CFG_FILENAME, "r");
-	BtAddress macAddress = 0, coyoteAddress = 0;
-	int type = 0, vibrateLeft, vibrateRight, channelA, channelB;
-	bool enable200 = false;
 	if (file) {
-		char line  [256];
-		while (fgets(line, sizeof(line), file) && (strlen(line) >= 19)) {
+		char line[256];
+		while (fgets(line, sizeof(line), file)) {
 			if (strncmp(line, "HUSH=", 5) == 0)
-				macAddress = getBtAddressFromString(line + 5);
+				config->setHushAddress(getBtAddressFromString(line + 5));
 			else if (strncmp(line, "TYPE=", 5) == 0)
-				type = atoi(line + 5);
+				config->setHushType(atoi(line + 5));
 			else if (strncmp(line, "COYOTE=", 7) == 0)
-				coyoteAddress = getBtAddressFromString(line + 7);
+				config->setCoyoteAddress(getBtAddressFromString(line + 7));
 			else if (strncmp(line, "ENABLE_COYOTE_200=", 18) == 0)
-				enable200 = atoi(line + 18) != 0;
+				config->setEnableCoyote200(atoi(line + 18) != 0);
 			else if (strncmp(line, "L=", 2) == 0)
-				vibrateLeft = atoi(line + 2);
+				config->setVibrateLeft(atoi(line + 2));
 			else if (strncmp(line, "R=", 2) == 0)
-				vibrateRight = atoi(line + 2);
+				config->setVibrateRight(atoi(line + 2));
 			else if (strncmp(line, "CHA=", 4) == 0)
-				channelA = atoi(line + 4);
+				config->setChannelA(atoi(line + 4));
 			else if (strncmp(line, "CHB=", 4) == 0)
-				channelB = atoi(line + 4);
+				config->setChannelB(atoi(line + 4));
 		}
 		fclose(file);
-
-		if ((macAddress && (type >= 0) && (type < ButtplugDevice::NUM_HUSH_DEVICES) ) || coyoteAddress)
-			resultConfig = new ButtplugConfig(macAddress, type, vibrateLeft, vibrateRight, coyoteAddress, enable200, channelA, channelB);
 	}
-	return resultConfig;
+	return config;
+/*
+#ifdef USE_HUSH2
+		if (!config->getHushAddress() || (config->getHushType() < 0) || (type >= ButtplugDevice::NUM_HUSH_DEVICES))
+			return NULL;
+#else
+		if (!config->getCoyoteAddress())
+			return NULL;
+#endif
+*/
 }

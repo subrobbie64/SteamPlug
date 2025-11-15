@@ -20,6 +20,8 @@ CoyoteDiscovery::CoyoteDiscovery() : _discoveredCoyoteAddress(0) {
 }
 
 CoyoteDiscovery::~CoyoteDiscovery() {
+	_wclBluetoothManager.Close();
+
 	__unhook(&CwclBluetoothManager::OnDeviceFound, &_wclBluetoothManager, &CoyoteDiscovery::wclBluetoothManagerDeviceFound);
 	__unhook(&CwclBluetoothManager::OnDiscoveringCompleted, &_wclBluetoothManager, &CoyoteDiscovery::wclBluetoothManagerDiscoveringCompleted);
 	__unhook(&CwclBluetoothManager::OnDiscoveringStarted, &_wclBluetoothManager, &CoyoteDiscovery::wclBluetoothManagerDiscoveringStarted);
@@ -59,7 +61,7 @@ void CoyoteDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetooth
 	}
 }
 
-ButtplugConfig* CoyoteDiscovery::runDiscovery() {
+bool CoyoteDiscovery::runDiscovery(ButtplugConfig* config) {
 	System::ResetEvent(_discoveryCompletedEvent);
 
 	int Res = getRadio()->Discover(10, dkBle);
@@ -68,7 +70,8 @@ ButtplugConfig* CoyoteDiscovery::runDiscovery() {
 
 	System::WaitEvent(_discoveryCompletedEvent);
 
-	return new ButtplugConfig(0, _discoveredCoyoteAddress, 0);
+	config->setCoyoteAddress(_discoveredCoyoteAddress);
+	return _discoveredCoyoteAddress != 0;
 }
 
 void CoyoteDiscovery::wclBluetoothManagerDiscoveringCompleted(void* Sender, CwclBluetoothRadio* const Radio, const int Error) {

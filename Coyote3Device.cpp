@@ -4,6 +4,9 @@
 
 #pragma comment (lib, "WclBluetoothFramework.lib")
 #pragma comment(lib, "Ws2_32.lib")
+#pragma warning(disable:6001)
+
+#define CHECK_BATTERY_INTERVAL 15000000 // 15 seconds
 
 std::string Mac2String(BtAddress Address);
 
@@ -23,6 +26,7 @@ CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	_levelB = chB;
 	_currentPercentage = 0;
 	_batteryLevel = 0;
+	_readBatteryAt = 0;
 
 	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &CoyoteDevice::wclGattClientConnect);
 	__hook(&CwclGattClient::OnDisconnect, &_wclGattClient, &CoyoteDevice::wclGattClientDisconnect);
@@ -97,18 +101,10 @@ void CoyoteDevice::wclGattClientConnect(void* Sender, const int Error) {
 			_expectedSerial = 0xFF;
 			_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
 			_levelA = _levelB = _currentPercentage = 0;
-			
-			unsigned char* batteryBuffer;
-			unsigned long length;
-			if (_wclGattClient.ReadCharacteristicValue(_batteryCharac, goNone, batteryBuffer, length) == WCL_E_SUCCESS) {
-				if (batteryBuffer) {
-					if (length == 1) {
-						_batteryLevel = batteryBuffer[0];
-					} else
-						log("Unexpected response to read battery: %d bytes\n", length);	
-					free(batteryBuffer);
-				}
-			}
+
+			const int maxLimit = _config.enableCoyote200() ? 200 : 100;
+			sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
+
 			return; // Success
 		}
 	} else if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
@@ -222,7 +218,23 @@ void CoyoteDevice::streamThread() {
 				bChWaveform->frequency[i] = 10;
 				bChWaveform->intensity[i] = (_levelB * _currentPercentage) / 100;
 			}
-			_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse);
+			_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse); System::SetEvent(_rumbleEvent);
+
+			if (_readBatteryAt < System::GetMicros()) {
+				unsigned char* batteryBuffer;
+				unsigned long length;
+				if (_wclGattClient.ReadCharacteristicValue(_batteryCharac, goNone, batteryBuffer, length) == WCL_E_SUCCESS) {
+					if (batteryBuffer) {
+						if (length == 1) {
+							_batteryLevel = batteryBuffer[0];
+						} else
+							log("Unexpected response to read battery: %d bytes\n", length);
+						free(batteryBuffer);
+					}
+				}
+				_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL;
+			}
+
 			if (_currentPercentage == 0)
 				System::WaitEvent(_rumbleEvent);
 		}

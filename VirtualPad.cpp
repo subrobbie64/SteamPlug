@@ -10,7 +10,7 @@ class EffectThread {
 public:
 	EffectThread(VirtualPad* virtualPad) : _virtualPad(virtualPad), _effectId(0) {
 		_effectEvent = System::CreateEventFlag();
-		_thread = System::CreateThread(&EffectThread::myThreadFunc, this);
+		_thread = System::CreateThread(&EffectThread::threadFunc, this);
 	}
 	~EffectThread() {
 		System::WaitThread(_thread);
@@ -23,7 +23,7 @@ private:
 	int _effectId;
 
 	void thread();
-	static threadReturn WINAPI myThreadFunc(void* arg);
+	static threadReturn WINAPI threadFunc(void* arg);
 };
 
 void EffectThread::thread() {
@@ -42,7 +42,7 @@ void EffectThread::fire(int id) {
 	System::SetEvent(_effectEvent);
 }
 
-threadReturn WINAPI EffectThread::myThreadFunc(void* arg) {
+threadReturn WINAPI EffectThread::threadFunc(void* arg) {
 	((EffectThread*)arg)->thread();
 	return THREAD_RETURN;
 }

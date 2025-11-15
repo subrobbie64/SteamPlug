@@ -16,6 +16,7 @@
 #define PLUG_BATTERY_LEVEL_LOW 20
 #define PLUG_BATTERY_LEVEL_CRITICAL 10
 #define RUMBLE_STEP 2
+#define DETECT_PAD_DELAY_MICROS 2500000
 
 #include "Coyote3Discovery.h"
 #include "Coyote3Device.h"
@@ -83,18 +84,22 @@ SteamPlugMain::~SteamPlugMain() {
 
 void SteamPlugMain::openButtplugDevice() {
     _buttplugConfig = ButtplugConfig::fromFile();
-    if (_buttplugConfig == NULL) {
-        log("No Buttplug address found in config, running Discovery!\n");
+	ButtplugDiscovery* deviceDiscovery = NULL;
 #ifdef USE_HUSH2
-		log("Looking for Hush 2 devices...\n");
-        Hush2ButtplugDiscovery discovery;
+    if (!_buttplugConfig->getHushAddress()) {
+        log("No Hush2 Buttplug address found in config, running Discovery!\n");
+        deviceDiscovery = new Hush2ButtplugDiscovery();
+    }
 #else
-		log("Looking for Coyote 3.0 devices...\n");
-		CoyoteDiscovery discovery;
+    if (!_buttplugConfig->getCoyoteAddress()) {
+        log("No Coyote 3.0 address found in config, running Discovery!\n");
+		deviceDiscovery = new CoyoteDiscovery();
+    }
 #endif
-        _buttplugConfig = discovery.runDiscovery();
-		if (_buttplugConfig == NULL)
+    if (deviceDiscovery) {
+        if (!deviceDiscovery->runDiscovery(_buttplugConfig))
             error("No device found!\n");
+        delete deviceDiscovery;
         _buttplugConfig->toFile();
 
         Sleep(3000);
@@ -114,11 +119,7 @@ void SteamPlugMain::openButtplugDevice() {
     while (!_buttplugDevice->isConnected())
         System::Sleep(1000);
 	log("%s connected.\n", _buttplugDevice->getDeviceName().c_str());
-#ifndef USE_HUSH2
-	const int maxLimit = _buttplugConfig->enableCoyote200() ? 200 : 100;
-    _coyoteDevice->sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
     System::Sleep(500);
-#endif
 
     _buttplugDevice->setVibrate(40, 40);
     Sleep(200);
@@ -175,11 +176,16 @@ PhysicalPad* SteamPlugMain::openGamePad(ControllerMode *mode, int *physicalPadIn
             *physicalPadIndex = xboxPad->getPadId();
             return xboxPad;
         }
-        _waitPadDetection = System::GetMicros() + 2500000;
+        _waitPadDetection = System::GetMicros() + DETECT_PAD_DELAY_MICROS;
     }
     return NULL;
 }
 
+#ifdef USE_HUSH2
+#define DEVICE_NAME "Buttplug"
+#else
+#define DEVICE_NAME "Coyote"
+#endif
 void SteamPlugMain::run() {
     openButtplugDevice();
 	_virtualPad = new VirtualPad(*_buttplugDevice);
@@ -193,9 +199,9 @@ void SteamPlugMain::run() {
     while (true) {
         if ((cycleCount % 100) == 0) {
             if (_buttplugDevice->isConnected()) {
-                printXy(1, LINE_PLUG_STATUS, GREEN, "Buttplug connected.                   ");
+                printXy(1, LINE_PLUG_STATUS, GREEN, DEVICE_NAME" connected.                   ");
             } else
-                printXy(1, LINE_PLUG_STATUS, RED, "Buttplug disconnected, reconnecting...      ");
+                printXy(1, LINE_PLUG_STATUS, RED, DEVICE_NAME" disconnected, reconnecting...      ");
         }
 
         _virtualPad->updateState();
@@ -317,7 +323,7 @@ void SteamPlugMain::printPlugBatteryLevel(unsigned char plugBatteryLevel) {
     else if (plugBatteryLevel <= PLUG_BATTERY_LEVEL_LOW)
         col = YELLOW;
 
-	printBar(col, LINE_PLUG_BATTERY, "Plug bat:", plugBatteryLevel);
+	printBar(col, LINE_PLUG_BATTERY, DEVICE_NAME " bat:", plugBatteryLevel);
 }
 
 void SteamPlugMain::printPadBatteryLevel(unsigned char batteryLevel) {

@@ -9,12 +9,11 @@ using namespace wclBluetooth;
 class CoyoteDevice : public AbstractButtDevice {
 public:
 	CoyoteDevice(ButtplugConfig &config);
-	~CoyoteDevice();
+	virtual ~CoyoteDevice();
 	
 	virtual void connect();
 	virtual bool isConnected();
 
-	void sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity);
 	void adjustChannelIntensity(int levelA, int levelB);
 	void getConfigVibrate(int* levelA, int* levelB);
 	virtual void setVibrate(unsigned char effectiveVibrationPercent);
@@ -35,6 +34,8 @@ private:
 
 	void wclGattClientCharacteristicChanged(void* Sender, const unsigned short Handle,
 		const unsigned char* const Value, const unsigned long Length);
+
+	void sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity);
 
 	void streamThread();
 	static threadReturn WINAPI streamThreadFunc(void* arg);
@@ -58,6 +59,7 @@ private:
 	unsigned char _strengthSerial, _expectedSerial, _confirmedChannelStrength[2];
 
 	unsigned char _batteryLevel;
+	unsigned long long _readBatteryAt;
 
 	sysevent_t _connectedEvent;
 
