@@ -50,7 +50,7 @@ threadReturn WINAPI EffectThread::threadFunc(void* arg) {
 static EffectThread* g_effectThread;
 #endif
 
-VirtualPad::VirtualPad(AbstractButtDevice& buttplugDevice) 
+VirtualPad::VirtualPad(ButtplugDevice& buttplugDevice)
 	: _client(vigem_alloc()), _outputPad(NULL), _virtualPadPlayerIndex(-1), _buttplugDevice(buttplugDevice), _physicalPad(NULL), _rumbleInstructionCount(0), _padState() {
 	
 	_rumbleStatusLarge = _rumbleStatusSmall = 0;

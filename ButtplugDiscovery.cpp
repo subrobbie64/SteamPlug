@@ -1,5 +1,6 @@
 #include "ButtplugDiscovery.h"
 #include "ButtplugConfig.h"
+#include "Hush2Device.h"
 #pragma warning(disable: 4244)
 
 Hush2ButtplugDiscovery::Hush2ButtplugDiscovery() : _discoveredHushDevice(0), _discoveredHushDeviceType(-1) {
@@ -151,8 +152,8 @@ int Hush2ButtplugDiscovery::getHushDeviceType(BtAddress address, wclGattServices
 		if (service.Uuid.IsShortUuid)
 			continue;
 
-		for (int j = 0; j < ButtplugDevice::NUM_HUSH_DEVICES; j++) {
-			if (!memcmp(&service.Uuid.LongUuid, &ButtplugDevice::HUSH_DEVICE[j].serviceId.LongUuid, sizeof(GUID)))
+		for (int j = 0; j < HushDevice::NUM_HUSH_DEVICES; j++) {
+			if (!memcmp(&service.Uuid.LongUuid, &HushDevice::HUSH_DEVICE[j].serviceId.LongUuid, sizeof(GUID)))
 				return j;
 		}
 	}

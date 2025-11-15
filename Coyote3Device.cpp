@@ -11,7 +11,7 @@
 std::string Mac2String(BtAddress Address);
 
 CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
-	: AbstractButtDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac(), _status(COYOTE_DISCONNECTED) {
+	: ButtplugDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac(), _status(COYOTE_DISCONNECTED) {
 
 	_connectRetryAt = 0;
 	_connectedEvent = System::CreateEventFlag();

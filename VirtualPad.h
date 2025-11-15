@@ -24,7 +24,7 @@ private:
 
 class VirtualPad {
 public:
-	VirtualPad(AbstractButtDevice& buttplugDevice);
+	VirtualPad(ButtplugDevice& buttplugDevice);
 	~VirtualPad();
 
 	int getVirtualPadUserIndex() const;
@@ -45,7 +45,7 @@ private:
 	PVIGEM_CLIENT _client;
 	PVIGEM_TARGET _outputPad;
 
-	AbstractButtDevice& _buttplugDevice;
+	ButtplugDevice& _buttplugDevice;
 
 	PhysicalPad* _physicalPad;
 	XUSB_REPORT _padState;

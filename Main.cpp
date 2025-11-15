@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include "ButtplugDiscovery.h"
 #include "ButtplugDevice.h"
+#include "Hush2Device.h"
 #include "ButtplugConfig.h"
 #include "XBoxPad.h"
 #include "DualShockPad.h"
@@ -60,7 +61,7 @@ private:
     static void __cdecl atProgramExitFunc();
 
     ButtplugConfig* _buttplugConfig;
-    AbstractButtDevice* _buttplugDevice;
+    ButtplugDevice* _buttplugDevice;
     CoyoteDevice* _coyoteDevice;
 
     VirtualPad* _virtualPad;
@@ -109,7 +110,7 @@ void SteamPlugMain::openButtplugDevice() {
 
 #ifdef USE_HUSH2
     log("Trying to connect Buttplug at %s...", Mac2String(_buttplugConfig->getHushAddress()).c_str());
-    _buttplugDevice = new ButtplugDevice(*_buttplugConfig);
+    _buttplugDevice = new HushButtplugDevice(*_buttplugConfig);
 #else
     log("Trying to connect Coyote 3.0 at %s...", Mac2String(_buttplugConfig->getCoyoteAddress()).c_str());
     _coyoteDevice = new CoyoteDevice(*_buttplugConfig);

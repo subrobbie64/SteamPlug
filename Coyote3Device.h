@@ -6,7 +6,7 @@
 
 using namespace wclBluetooth;
 
-class CoyoteDevice : public AbstractButtDevice {
+class CoyoteDevice : public ButtplugDevice {
 public:
 	CoyoteDevice(ButtplugConfig &config);
 	virtual ~CoyoteDevice();
