@@ -144,13 +144,4 @@ ButtplugConfig *ButtplugConfig::fromFile() {
 		fclose(file);
 	}
 	return config;
-/*
-#ifdef USE_HUSH2
-		if (!config->getHushAddress() || (config->getHushType() < 0) || (type >= ButtplugDevice::NUM_HUSH_DEVICES))
-			return NULL;
-#else
-		if (!config->getCoyoteAddress())
-			return NULL;
-#endif
-*/
 }
