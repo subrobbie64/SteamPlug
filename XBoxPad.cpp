@@ -1,6 +1,5 @@
 #include "XBoxPad.h"
 #include "ButtplugDevice.h"
-#include "ButtplugConfig.h"
 #include "System.h"
 
 #include <algorithm>

@@ -1,10 +1,9 @@
 #pragma once
 
-#include "ButtplugDiscovery.h"
+#include <wclBluetooth.h>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <Xinput.h>
-#include "System.h"
 #include "VirtualPad.h"
 
 class XBoxPad : public PhysicalPad {
