@@ -45,7 +45,7 @@ void ButtplugDevice::adjustVibration(int bySmallRumble, int byBigRumble) {
 }
 
 void ButtplugDevice::setVibrate(unsigned char smallRumble, unsigned char bigRumble) {
-	_effectiveVibrationPercent = std::clamp(((smallRumble * _smallRumbleIntensity.get() + bigRumble * _bigRumbleIntensity.get()) * 100) / (255 * 255), 0, 100);
+	_effectiveVibrationPercent = std::clamp(((smallRumble * _smallRumbleIntensity.get() + bigRumble * _bigRumbleIntensity.get()) * 100) / (100 * 255), 0, 100);
 	setVibrate(_effectiveVibrationPercent);
 }
 
