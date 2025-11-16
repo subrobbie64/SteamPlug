@@ -12,6 +12,9 @@ public:
 	BtAddress getCoyoteAddress() const;
 	void setCoyoteAddress(BtAddress address);
 
+	BtAddress getHismithAddress() const;
+	void setHismithAddress(BtAddress address);
+	
 	int getHushType() const;
 	void setHushType(int type);
 

@@ -103,6 +103,25 @@ void CoyoteDiscovery::inspectNextDevice() {
 		log("Connect error 0x%X\n", Res);
 }
 
+bool CoyoteDiscovery::isCoyoteDevice(CwclGattClient& gattClient) {
+	wclGattServices FServices;
+	int Res = gattClient.ReadServices(goNone, FServices);
+	if (Res == WCL_E_SUCCESS) {
+		bool foundCoyoteService = false, foundBatteryService = false;
+		for (const auto& service : FServices) {
+			if (!service.Uuid.IsShortUuid)
+				continue;
+			if (service.Uuid.ShortUuid == CoyoteDevice::SERVICE_UUID.ShortUuid)
+				foundCoyoteService = true;
+			if (service.Uuid.ShortUuid == CoyoteDevice::BATTERY_SERVICE_UUID.ShortUuid)
+				foundBatteryService = true;
+		}
+		return foundCoyoteService && foundBatteryService;
+	} else
+		log(" - error 0x%X reading services.", Res);
+	return false;
+}
+
 void CoyoteDiscovery::wclGattClientConnect(void* Sender, const int Error) {
 	BtAddress Address = ((CwclGattClient*)Sender)->Address;
 	log("Examining device %s", Mac2String(Address).c_str());
@@ -112,7 +131,7 @@ void CoyoteDiscovery::wclGattClientConnect(void* Sender, const int Error) {
 	if (Res == WCL_E_SUCCESS) {
 		std::string devName = std::string(DevNameWide.begin(), DevNameWide.end());
 		log(" - %s", devName.c_str());
-		if (!DevNameWide.compare(EXPECTED_DEVICE_NAME)) {
+		if (!devName.compare(CoyoteDevice::DEVICE_NAME) && isCoyoteDevice(_wclGattClient)) {
 			log(" - \x1B[%02Xmlooks like a Coyote 3.0\x1B[%02Xm!\n", GREEN, WHITE);
 			_discoveredCoyoteAddress = Address;
 		}
@@ -131,5 +150,3 @@ void CoyoteDiscovery::wclGattClientDisconnect(void* Sender, const int Reason) {
 	else
 		inspectNextDevice();
 }
-
-const tstring CoyoteDiscovery::EXPECTED_DEVICE_NAME = L"47L121000";

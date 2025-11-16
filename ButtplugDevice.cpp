@@ -49,6 +49,11 @@ void ButtplugDevice::setVibrate(unsigned char smallRumble, unsigned char bigRumb
 	setVibrate(_effectiveVibrationPercent);
 }
 
+void ButtplugDevice::getVibrate(int* smallRumble, int* bigRumble) const {
+	*smallRumble = _smallRumbleIntensity.get();
+	*bigRumble = _bigRumbleIntensity.get();
+}
+
 int ButtplugDevice::getEffectiveVibration() const {
 	return _effectiveVibrationPercent;
 }

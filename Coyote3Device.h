@@ -68,6 +68,7 @@ private:
 	static const int MAX_VIBRATION_SETTING;
 	static const int CONNECT_RETRY_MS;
 
+public:
 	static const std::string DEVICE_NAME;
 
 	static const wclGattUuid SERVICE_UUID, BATTERY_SERVICE_UUID;

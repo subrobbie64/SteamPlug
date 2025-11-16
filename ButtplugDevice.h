@@ -35,6 +35,7 @@ public:
 	virtual const std::string& getDeviceName() const = 0;
 
 	void adjustVibration(int bySmallRumble, int byBigRumble);
+	void getVibrate(int* smallRumble, int* bigRumble) const;
 	void setVibrate(unsigned char smallRumble, unsigned char bigRumble);
 	int getEffectiveVibration() const;
 

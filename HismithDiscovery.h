@@ -1,15 +1,15 @@
 #pragma once
-#include "Coyote3Device.h"
-#include "System.h"
+#include "ButtplugDevice.h"
 #include "ButtplugDiscovery.h"
+#include "System.h"
 #include <deque>
 
 using namespace wclBluetooth;
 
-class CoyoteDiscovery : public ButtplugDiscovery {
+class HismithDiscovery : public ButtplugDiscovery {
 public:
-	CoyoteDiscovery();
-	~CoyoteDiscovery();
+	HismithDiscovery();
+	~HismithDiscovery();
 
 	virtual bool runDiscovery(ButtplugConfig* config);
 private:
@@ -23,15 +23,15 @@ private:
 	void wclGattClientDisconnect(void* Sender, const int Reason);
 
 	void inspectNextDevice();
-	static bool isCoyoteDevice(CwclGattClient& gattClient);
+
+	bool isHismithDevice(BtAddress address, wclGattServices& services);
 
 	CwclBluetoothManager _wclBluetoothManager;
 	CwclGattClient _wclGattClient;
 
-	BtAddress _discoveredCoyoteAddress;
-
 	std::deque<BtAddress> _discoveredDevices;
+
+	BtAddress _discoveredHismithDevice;
 
 	sysevent_t _discoveryCompletedEvent;
 };
-

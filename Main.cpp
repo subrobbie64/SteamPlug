@@ -4,6 +4,7 @@
 #include "ButtplugDiscovery.h"
 #include "ButtplugDevice.h"
 #include "Hush2Device.h"
+#include "Hush2Discovery.h"
 #include "ButtplugConfig.h"
 #include "XBoxPad.h"
 #include "DualShockPad.h"
@@ -89,7 +90,7 @@ void SteamPlugMain::openButtplugDevice() {
 #ifdef USE_HUSH2
     if (!_buttplugConfig->getHushAddress()) {
         log("No Hush2 Buttplug address found in config, running Discovery!\n");
-        deviceDiscovery = new Hush2ButtplugDiscovery();
+        deviceDiscovery = new HushDiscovery();
     }
 #else
     if (!_buttplugConfig->getCoyoteAddress()) {
@@ -110,7 +111,7 @@ void SteamPlugMain::openButtplugDevice() {
 
 #ifdef USE_HUSH2
     log("Trying to connect Buttplug at %s...", Mac2String(_buttplugConfig->getHushAddress()).c_str());
-    _buttplugDevice = new HushButtplugDevice(*_buttplugConfig);
+    _buttplugDevice = new HushDevice(*_buttplugConfig);
 #else
     log("Trying to connect Coyote 3.0 at %s...", Mac2String(_buttplugConfig->getCoyoteAddress()).c_str());
     _coyoteDevice = new CoyoteDevice(*_buttplugConfig);
@@ -200,9 +201,9 @@ void SteamPlugMain::run() {
     while (true) {
         if ((cycleCount % 100) == 0) {
             if (_buttplugDevice->isConnected()) {
-                printXy(1, LINE_PLUG_STATUS, GREEN, DEVICE_NAME" connected.                   ");
+                printXy(1, LINE_PLUG_STATUS, GREEN, DEVICE_NAME " connected.                   ");
             } else
-                printXy(1, LINE_PLUG_STATUS, RED, DEVICE_NAME" disconnected, reconnecting...      ");
+                printXy(1, LINE_PLUG_STATUS, RED, DEVICE_NAME " disconnected, reconnecting...      ");
         }
 
         _virtualPad->updateState();
@@ -272,13 +273,13 @@ void SteamPlugMain::run() {
                 getTerminalSize(&cols, &rows);
 
                 int rumbleScaleLeft, rumbleScaleRight;
-                _buttplugConfig->getVibration(&rumbleScaleLeft, &rumbleScaleRight);
+                _buttplugDevice->getVibrate(&rumbleScaleLeft, &rumbleScaleRight);
                 printXy(cols - 20, LINE_KEY_HELP + 0, WHITE, "Vib L/R: \x1B[%02Xm%3d%% / %3d%%", YELLOW, rumbleScaleLeft, rumbleScaleRight);
                 printXy(cols - 20, LINE_KEY_HELP + 1, WHITE, "O/L: Left, +/-: Right");
                 printXy(cols - 20, LINE_KEY_HELP + 2, WHITE, "T: Test Vibrations");
 #ifndef USE_HUSH2
                 int coyoteChannelA, coyoteChannelB;
-				_buttplugConfig->getChannels(&coyoteChannelA, &coyoteChannelB);
+				_coyoteDevice->getConfigVibrate(&coyoteChannelA, &coyoteChannelB);
                 printXy(cols - 40, LINE_KEY_HELP + 0, WHITE, "Ch A/B: \x1B[%02Xm%3d%% / %3d%%", YELLOW, coyoteChannelA, coyoteChannelB);
                 printXy(cols - 40, LINE_KEY_HELP + 1, WHITE, "Q/A: Ch A, W/S: Ch B");
 #endif
