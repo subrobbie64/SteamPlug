@@ -3,7 +3,7 @@
 #include <algorithm>
 
 HismithDevice::HismithDevice(ButtplugConfig& config)
-	: ButtplugDevice(config, config.getHismithAddress()), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac() {
+	: ButtplugDevice(config, config.getHismithAddress()), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac(), _deviceId(0) {
 
 	_vibration = 0;
 	_batteryLevel = 128;
@@ -71,7 +71,6 @@ void HismithDevice::onConnectionEstablished() {
 			log("Connected to unknown Hismith device (0x%04X)\n", _deviceId);
 		log("Setting speed 0\n");
 		setFuckMachineSpeed(0);
-		log("Signalling connected event\n");
 		return; // Success
 	}
 
