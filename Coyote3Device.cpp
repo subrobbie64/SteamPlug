@@ -11,10 +11,8 @@
 std::string Mac2String(BtAddress Address);
 
 CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
-	: ButtplugDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac(), _status(COYOTE_DISCONNECTED) {
+	: ButtplugDevice(config, config.getCoyoteAddress()), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac(), _status(BP_DISCONNECTED) {
 
-	_connectRetryAt = 0;
-	_connectedEvent = System::CreateEventFlag();
 	_rumbleEvent = System::CreateEventFlag();
 	
 	_strengthSerial = 0;
@@ -24,105 +22,55 @@ CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	config.getChannels(&chA, &chB);
 	_levelA = chA;
 	_levelB = chB;
-	_currentPercentage = 0;
+	_currentDeviceVibration = 0;
 	_batteryLevel = 0;
 	_readBatteryAt = 0;
-
-	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &CoyoteDevice::wclGattClientConnect);
-	__hook(&CwclGattClient::OnDisconnect, &_wclGattClient, &CoyoteDevice::wclGattClientDisconnect);
-	__hook(&CwclGattClient::OnCharacteristicChanged, &_wclGattClient, &CoyoteDevice::wclGattClientCharacteristicChanged);
-
-	_wclBluetoothManager.SetMessageProcessing(mpAsync);
-	int res = _wclBluetoothManager.Open();
-	if (res != WCL_E_SUCCESS)
-		error("Error opening Bluetooth manager: 0x%X", res);
-
-	_wclGattClient.Address = config.getCoyoteAddress();
-	_wclGattClient.ConnectOnRead = true;
-	_wclGattClient.ForceNotifications = false;
 
 	_stopThread = false;
 	_streamThread = System::CreateThread(CoyoteDevice::streamThreadFunc, this);
 }
 
 CoyoteDevice::~CoyoteDevice() {
-	__unhook(&CwclGattClient::OnConnect, &_wclGattClient, &CoyoteDevice::wclGattClientConnect);
-	__unhook(&CwclGattClient::OnDisconnect, &_wclGattClient, &CoyoteDevice::wclGattClientDisconnect);
-	__unhook(&CwclGattClient::OnCharacteristicChanged, &_wclGattClient, &CoyoteDevice::wclGattClientCharacteristicChanged);
-
 	_stopThread = true;
 	System::WaitThread(_streamThread);
-
-	System::DestroyEventFlag(_connectedEvent);
 }
 
-void CoyoteDevice::connect() {
-	if (_connectRetryAt > System::GetMicros()) {
-		debug("connect(): Waiting for retry delay\n");
-		return;
-	}
-
-	_connectRetryAt = System::GetMicros() + CONNECT_RETRY_MS * 1000;
-	debug("Trying Connect to Coyote device...\n");
-	CwclBluetoothRadio* Radio;
-	int Res = _wclBluetoothManager.GetLeRadio(Radio);
-	if (Res != WCL_E_SUCCESS)
-		error("Get working radio failed");
-
-	System::ResetEvent(_connectedEvent);
-	_status = COYOTE_CONNECTING;
-	Res = _wclGattClient.Connect(Radio);
-	if (Res != WCL_E_SUCCESS) {
-		debug("GATT Connect error: %02X", Res);
-		_status = COYOTE_DISCONNECTED;
-		System::SetEvent(_connectedEvent);
-	}
-}
-
-void CoyoteDevice::wclGattClientConnect(void* Sender, const int Error) {
+void CoyoteDevice::onConnectionEstablished() {
 	int Res;
-	if (Error == WCL_E_SUCCESS) {
-		if ((Res = _wclGattClient.FindService(SERVICE_UUID, _coyoteService)) != WCL_E_SUCCESS)
-			error("FindService failed 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.FindCharacteristic(_coyoteService, TX_CHARACTERISTIC_UUID, _txCharac)) != WCL_E_SUCCESS)
-			error("FindCharacteristic (TX) Error: 0x%X", Res);
-		else if ((Res = _wclGattClient.FindCharacteristic(_coyoteService, RX_CHARACTERISTIC_UUID, _rxCharac)) != WCL_E_SUCCESS)
-			error("FindCharacteristic (RX) Error: 0x%X", Res);
-		else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
-			error("Subscribe failed Error 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.WriteClientConfiguration(_rxCharac, true, goNone)) != WCL_E_SUCCESS)
-			error("WriteClientConfiguration->SubscribeForNotifications failed 0x%X\n", Res);
-		else if ((Res = _wclGattClient.FindService(BATTERY_SERVICE_UUID, _coyoteBatteryService)) != WCL_E_SUCCESS)
-			error("FindService->Battery failed 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.FindCharacteristic(_coyoteBatteryService, BATTERY_CHARACTERISTIC_UUID, _batteryCharac)) != WCL_E_SUCCESS)
-			error("FindCharacteristic (Battery) Error: 0x%X", Res);
-		else {
-			_strengthSerial = 0;
-			_expectedSerial = 0xFF;
-			_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
-			_levelA = _levelB = _currentPercentage = 0;
+	if ((Res = _wclGattClient.FindService(SERVICE_UUID, _coyoteService)) != WCL_E_SUCCESS)
+		error("FindService failed 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.FindCharacteristic(_coyoteService, TX_CHARACTERISTIC_UUID, _txCharac)) != WCL_E_SUCCESS)
+		error("FindCharacteristic (TX) Error: 0x%X", Res);
+	else if ((Res = _wclGattClient.FindCharacteristic(_coyoteService, RX_CHARACTERISTIC_UUID, _rxCharac)) != WCL_E_SUCCESS)
+		error("FindCharacteristic (RX) Error: 0x%X", Res);
+	else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
+		error("Subscribe failed Error 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.WriteClientConfiguration(_rxCharac, true, goNone)) != WCL_E_SUCCESS)
+		error("WriteClientConfiguration->SubscribeForNotifications failed 0x%X\n", Res);
+	else if ((Res = _wclGattClient.FindService(BATTERY_SERVICE_UUID, _coyoteBatteryService)) != WCL_E_SUCCESS)
+		error("FindService->Battery failed 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.FindCharacteristic(_coyoteBatteryService, BATTERY_CHARACTERISTIC_UUID, _batteryCharac)) != WCL_E_SUCCESS)
+		error("FindCharacteristic (Battery) Error: 0x%X", Res);
+	else {
+		_strengthSerial = 0;
+		_expectedSerial = 0xFF;
+		_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
+		_levelA = _levelB = _currentDeviceVibration = 0;
 
-			const int maxLimit = _config.enableCoyote200() ? 200 : 100;
-			sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
+		const int maxLimit = _config.enableCoyote200() ? 200 : 100;
+		sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
 
-			return; // Success
-		}
-	} else if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
-		log("BTLE device not found.\n");
-	else
-		log("Connection failed with error 0x%X\n", Error);
+		return; // Success
+	}
 
 	_wclGattClient.Disconnect();
-	_status = COYOTE_DISCONNECTED;
-	System::SetEvent(_connectedEvent);
+	_status = BP_DISCONNECTED;
 }
 
-void CoyoteDevice::wclGattClientCharacteristicChanged(void* Sender, const unsigned short Handle,
-	const unsigned char* const Value, const unsigned long Length) {
+void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
 
 	if ((Length == 6) && (Value[0] == 0x53)) { // Device ID & lighting configuration after connect, i.e. 53 00 93 3B 2D 05
-		_status = COYOTE_CONNECTED;
-		System::SetEvent(_connectedEvent);
+		_status = BP_CONNECTED;
 	} else if ((Length == 4) && (Value[0] == 0x51)) { // Battery status, i.e. 51 00 10 64
 		_batteryLevel = Value[3]; 
 	} else if ((Length == 4) && (Value[0] == 0xB1)) { // Confirmation of 0xBF, i.e. B1 01 50 50
@@ -184,15 +132,15 @@ void CoyoteDevice::getConfigVibrate(int* levelA, int* levelB) {
 }
 
 void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
-	if (_currentPercentage || (_currentPercentage != effectiveVibrationPercent)) {
-		_currentPercentage = effectiveVibrationPercent;
+	if (_currentDeviceVibration || (_currentDeviceVibration != effectiveVibrationPercent)) {
+		_currentDeviceVibration = effectiveVibrationPercent;
 		System::SetEvent(_rumbleEvent);
 	}
 }
 
 void CoyoteDevice::streamThread() {
 	while (!_stopThread) {
-		if (_status == COYOTE_CONNECTED) {
+		if (_status == BP_CONNECTED) {
 			unsigned char commandBuf[20];
 			commandBuf[0] = 0xB0;
 			commandBuf[1] = commandBuf[2] = commandBuf[3] = 0x00;
@@ -214,9 +162,9 @@ void CoyoteDevice::streamThread() {
 			ChannelWaveform* bChWaveform = (ChannelWaveform*)(commandBuf + 12);
 			for (int i = 0; i < 4; i++) {
 				aChWaveform->frequency[i] = 10; // encodeFrequency(100);
-				aChWaveform->intensity[i] = (_levelA * _currentPercentage) / 100;
+				aChWaveform->intensity[i] = (_levelA * _currentDeviceVibration) / 100;
 				bChWaveform->frequency[i] = 10;
-				bChWaveform->intensity[i] = (_levelB * _currentPercentage) / 100;
+				bChWaveform->intensity[i] = (_levelB * _currentDeviceVibration) / 100;
 			}
 			_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse); System::SetEvent(_rumbleEvent);
 
@@ -235,7 +183,7 @@ void CoyoteDevice::streamThread() {
 				_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL;
 			}
 
-			if (_currentPercentage == 0)
+			if (_currentDeviceVibration == 0)
 				System::WaitEvent(_rumbleEvent);
 		}
 		System::Sleep(100);
@@ -245,16 +193,6 @@ void CoyoteDevice::streamThread() {
 threadReturn WINAPI CoyoteDevice::streamThreadFunc(void* arg) {
 	((CoyoteDevice*)arg)->streamThread();
 	return THREAD_RETURN;
-}
-
-const std::string& CoyoteDevice::getDeviceName() const {
-	return DEVICE_NAME;
-}
-
-bool CoyoteDevice::isConnected() {
-	if (_status == COYOTE_DISCONNECTED)
-		connect();
-	return _status == COYOTE_CONNECTED;
 }
 
 void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity) {
@@ -271,19 +209,6 @@ void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChL
 	commandBuf[6] = bChFreqIntensity;
 	_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 7, plNone, wkWithoutResponse);
 }
-
-void CoyoteDevice::wclGattClientDisconnect(void* Sender, const int Reason) {
-	debug("Coyote disconnected, reason = 0x%X\n", Reason);
-	_status = COYOTE_DISCONNECTED;
-	System::SetEvent(_connectedEvent);
-}
-
-
-int CoyoteDevice::getBatteryLevel() const {
-	return _batteryLevel;
-}
-
-const int CoyoteDevice::CONNECT_RETRY_MS = 2500;
 
 const std::string CoyoteDevice::DEVICE_NAME = "47L121000";
 

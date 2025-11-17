@@ -5,6 +5,8 @@
 #include "ButtplugDevice.h"
 #include "Hush2Device.h"
 #include "Hush2Discovery.h"
+#include "HismithDevice.h"
+#include "HismithDiscovery.h"
 #include "ButtplugConfig.h"
 #include "XBoxPad.h"
 #include "DualShockPad.h"
@@ -92,10 +94,15 @@ void SteamPlugMain::openButtplugDevice() {
         log("No Hush2 Buttplug address found in config, running Discovery!\n");
         deviceDiscovery = new HushDiscovery();
     }
-#else
+#elseif USE_COYOTE
     if (!_buttplugConfig->getCoyoteAddress()) {
         log("No Coyote 3.0 address found in config, running Discovery!\n");
 		deviceDiscovery = new CoyoteDiscovery();
+    }
+#else
+    if (!_buttplugConfig->getHismithAddress()) {
+        log("No getHismith address found in config, running Discovery!\n");
+        deviceDiscovery = new HismithDiscovery();
     }
 #endif
     if (deviceDiscovery) {
@@ -112,10 +119,12 @@ void SteamPlugMain::openButtplugDevice() {
 #ifdef USE_HUSH2
     log("Trying to connect Buttplug at %s...", Mac2String(_buttplugConfig->getHushAddress()).c_str());
     _buttplugDevice = new HushDevice(*_buttplugConfig);
-#else
+#elif USE_COYOTE
     log("Trying to connect Coyote 3.0 at %s...", Mac2String(_buttplugConfig->getCoyoteAddress()).c_str());
     _coyoteDevice = new CoyoteDevice(*_buttplugConfig);
     _buttplugDevice = _coyoteDevice;
+#else
+    _buttplugDevice = new HismithDevice(*_buttplugConfig);
 #endif
     _buttplugDevice->connect();
     while (!_buttplugDevice->isConnected())
@@ -185,8 +194,10 @@ PhysicalPad* SteamPlugMain::openGamePad(ControllerMode *mode, int *physicalPadIn
 
 #ifdef USE_HUSH2
 #define DEVICE_NAME "Buttplug"
-#else
+#elif USE_COYOTE
 #define DEVICE_NAME "Coyote"
+#else
+#define DEVICE_NAME "Hismith fuck machine"
 #endif
 void SteamPlugMain::run() {
     openButtplugDevice();
@@ -250,7 +261,8 @@ void SteamPlugMain::run() {
             
             if (_kbhit() && (_getch() == 't'))
                 testing = false;
-        } else if (_virtualPad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight) || (cycleCount == 0)) {
+        }
+        if (_virtualPad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight) || (cycleCount == 0)) {
             rumblePlug = _buttplugDevice->getEffectiveVibration();
             printXy(1, LINE_RUMBLE_STATUS, WHITE, "Rumble instructions: %d\nStatus: L=%3d, R=%3d => Plug=%3d", rumbleCommands, rumbleLeft, rumbleRight, rumblePlug);
             printXy(1, LINE_EVENT_STATUS, GREEN, "Processing events.");
@@ -277,7 +289,7 @@ void SteamPlugMain::run() {
                 printXy(cols - 20, LINE_KEY_HELP + 0, WHITE, "Vib L/R: \x1B[%02Xm%3d%% / %3d%%", YELLOW, rumbleScaleLeft, rumbleScaleRight);
                 printXy(cols - 20, LINE_KEY_HELP + 1, WHITE, "O/L: Left, +/-: Right");
                 printXy(cols - 20, LINE_KEY_HELP + 2, WHITE, "T: Test Vibrations");
-#ifndef USE_HUSH2
+#ifdef USE_COYOTE
                 int coyoteChannelA, coyoteChannelB;
 				_coyoteDevice->getConfigVibrate(&coyoteChannelA, &coyoteChannelB);
                 printXy(cols - 40, LINE_KEY_HELP + 0, WHITE, "Ch A/B: \x1B[%02Xm%3d%% / %3d%%", YELLOW, coyoteChannelA, coyoteChannelB);

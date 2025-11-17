@@ -37,7 +37,7 @@ private:
 	ButtplugConfig();
 	ButtplugConfig(BtAddress hushAddress, int type, int vibrateLeft, int vibrateRight, BtAddress coyoteAddress, bool enable200, int channelA, int channelB);
 
-	BtAddress _hushAddress, _coyoteAddress;
+	BtAddress _hushAddress, _coyoteAddress, _hismithAddress;
 	int _type;
 
 	int _vibrateLeft, _vibrateRight;

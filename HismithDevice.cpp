@@ -3,85 +3,13 @@
 #include <algorithm>
 
 HismithDevice::HismithDevice(ButtplugConfig& config)
-	: ButtplugDevice(config), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac(), _status(BP_DISCONNECTED), _deviceName() {
+	: ButtplugDevice(config, config.getHismithAddress()), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac() {
 
 	_vibration = 0;
-
-	_connectRetryAt = 0;
-	_connectedEvent = System::CreateEventFlag();
-	System::CreateSema(&_runningCommand, 1);
-
-	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &HismithDevice::wclGattClientConnect);
-	__hook(&CwclGattClient::OnDisconnect, &_wclGattClient, &HismithDevice::wclGattClientDisconnect);
-	__hook(&CwclGattClient::OnCharacteristicChanged, &_wclGattClient, &HismithDevice::wclGattClientCharacteristicChanged);
-
-	_wclBluetoothManager.SetMessageProcessing(mpAsync);
-	int res = _wclBluetoothManager.Open();
-	if (res != WCL_E_SUCCESS)
-		error("Error opening Bluetooth manager: 0x%X", res);
-
-	_wclGattClient.Address = config.getHismithAddress();
-	_wclGattClient.ConnectOnRead = true;
-	_wclGattClient.ForceNotifications = false;
+	_batteryLevel = 128;
 }
 
 HismithDevice::~HismithDevice() {
-	__unhook(&CwclGattClient::OnConnect, &_wclGattClient, &HismithDevice::wclGattClientConnect);
-	__unhook(&CwclGattClient::OnDisconnect, &_wclGattClient, &HismithDevice::wclGattClientDisconnect);
-	__unhook(&CwclGattClient::OnCharacteristicChanged, &_wclGattClient, &HismithDevice::wclGattClientCharacteristicChanged);
-
-	System::DestroyEventFlag(_connectedEvent);
-	System::DestroySema(&_runningCommand);
-}
-
-void HismithDevice::connect() {
-	if (_connectRetryAt > System::GetMicros()) {
-		debug("connect(): Waiting for retry delay\n");
-		return;
-	}
-
-	_connectRetryAt = System::GetMicros() + CONNECT_RETRY_MS * 1000;
-	_vibration = 0;
-
-	debug("Trying to connect to fuck machine device...\n");
-	CwclBluetoothRadio* Radio;
-	int Res = _wclBluetoothManager.GetLeRadio(Radio);
-	if (Res != WCL_E_SUCCESS)
-		error("Get working radio failed");
-
-	System::ResetEvent(_connectedEvent);
-	_status = BP_CONNECTING;
-	Res = _wclGattClient.Connect(Radio);
-	if (Res != WCL_E_SUCCESS) {
-		debug("GATT Connect error: %02X", Res);
-		disconnect();
-	}
-}
-
-void HismithDevice::disconnect() {
-	_wclGattClient.Disconnect();
-	_status = BP_DISCONNECTED;
-	System::SetEvent(_connectedEvent);
-}
-
-std::string HismithDevice::getGapName() {
-	std::string deviceName;
-
-	wclGattService genericAccessService;
-	if (_wclGattClient.FindService(GENERIC_ACCESS_SERVICE_UUID, genericAccessService) == WCL_E_SUCCESS) {
-		wclGattCharacteristic deviceNameCharac;
-		if (_wclGattClient.FindCharacteristic(genericAccessService, DEVICE_NAME_CHARAC_UUID, deviceNameCharac) == WCL_E_SUCCESS) {
-			unsigned char* nameBuffer;
-			unsigned long length;
-			if (_wclGattClient.ReadCharacteristicValue(deviceNameCharac, goNone, nameBuffer, length) == WCL_E_SUCCESS) {
-				if (nameBuffer) {
-					deviceName = std::string((const char*)nameBuffer, length);
-					free(nameBuffer);
-				}
-			}
-		}
-	}
-	return deviceName;
 }
 
 void HismithDevice::setFuckMachineSpeed(int speed) {
@@ -95,65 +23,49 @@ void HismithDevice::setFuckMachineSpeed(int speed) {
 		debug("WriteCharacteristicValue failed 0x%X\n", Res);
 }
 
-void HismithDevice::wclGattClientConnect(void* Sender, const int Error) {
-	int Res;
-	if (Error == WCL_E_SUCCESS) {
-		_deviceName = getGapName();
-		if ((Res = _wclGattClient.FindService(INFO_SERVICE_UUID, _infoService)) != WCL_E_SUCCESS)
-			debug("FindService failed 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.FindService(INFO_SERVICE_CHARAC_UUID, _infoService)) != WCL_E_SUCCESS)
-			debug("FindService failed 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.FindService(TX_SERVICE_UUID, _txService)) != WCL_E_SUCCESS)
-			debug("FindService failed 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.FindService(RX_SERVICE_UUID, _rxService)) != WCL_E_SUCCESS)
-			debug("FindService failed 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.FindCharacteristic(_infoService, INFO_SERVICE_CHARAC_UUID, _infoCharac)) != WCL_E_SUCCESS)
-			debug("FindCharacteristic (INFO) Error: 0x%X", Res);
-		else if ((Res = _wclGattClient.FindCharacteristic(_txService, TX_SERVICE_UUID, _txCharac)) != WCL_E_SUCCESS)
-			debug("FindCharacteristic (TX) Error: 0x%X", Res);
-		else if ((Res = _wclGattClient.FindCharacteristic(_rxService, RX_SERVICE_UUID, _rxCharac)) != WCL_E_SUCCESS)
-			debug("FindCharacteristic (RX) Error: 0x%X", Res);
-		else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
-			debug("Subscribe failed Error 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.WriteClientConfiguration(_rxCharac, true, goNone)) != WCL_E_SUCCESS)
-			debug("WriteClientConfiguration->SubscribeForNotifications failed 0x%X\n", Res);
-		else {
-			unsigned char* nameBuffer;
-			unsigned long length = 255;
-			if (_wclGattClient.ReadCharacteristicValue(_infoCharac, goNone, nameBuffer, length) == WCL_E_SUCCESS) {
-				if (nameBuffer) {
-					fprintf(stderr, "got %d bytes via bluetooth:\n", length);
-					for (int i = 0; i < length; i++)
-						fprintf(stderr, "%02X ", nameBuffer[i]);
-					fprintf(stderr, "\n");
-					free(nameBuffer);
-				}
-			}
+void HismithDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
+}
 
-			setFuckMachineSpeed(0);
-			return; // Success
-		}
-	} else if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
-		debug("BTLE device not found.\n");
-	else
-		debug("Connection failed with error 0x%X\n", Error);
+void HismithDevice::onConnectionEstablished() {
+	int Res;
+	if ((Res = _wclGattClient.FindService(INFO_SERVICE_UUID, _infoService)) != WCL_E_SUCCESS)
+		log("FindService failed 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.FindService(TX_SERVICE_UUID, _txService)) != WCL_E_SUCCESS)
+		log("FindService TX failed 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.FindService(RX_SERVICE_UUID, _rxService)) != WCL_E_SUCCESS)
+		log("FindService RX failed 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.FindCharacteristic(_infoService, INFO_SERVICE_CHARAC_UUID, _infoCharac)) != WCL_E_SUCCESS)
+		log("FindCharacteristic (INFO) Error: 0x%X", Res);
+	else if ((Res = _wclGattClient.FindCharacteristic(_txService, TX_CHARAC, _txCharac)) != WCL_E_SUCCESS)
+		log("FindCharacteristic (TX) Error: 0x%X", Res);
+	else if ((Res = _wclGattClient.FindCharacteristic(_rxService, RX_CHARAC, _rxCharac)) != WCL_E_SUCCESS)
+		log("FindCharacteristic (RX) Error: 0x%X", Res);
+	else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
+		log("Subscribe failed Error 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.WriteClientConfiguration(_rxCharac, true, goNone)) != WCL_E_SUCCESS)
+		log("WriteClientConfiguration->SubscribeForNotifications failed 0x%X\n", Res);
+	else {
+		log("Reading device id...\n");
+		unsigned char* nameBuffer;
+		unsigned long length = 2;
+		if ((Res = _wclGattClient.ReadCharacteristicValue(_infoCharac, goNone, nameBuffer, length)) == WCL_E_SUCCESS) {
+			if (nameBuffer) {
+				if ((length == 2) && (nameBuffer[0] == 0x10) && (nameBuffer[1] == 0x05))
+					log("Hismith S1 reported.\n");
+				else
+					error("Unexpected response to read model characteristic: %02X %02X (len = %d)\n", nameBuffer[0], nameBuffer[1], length);
+				free(nameBuffer);
+			} else
+				log("Reading returned no buffer\n");
+		} else
+			log("Error 0x%X reading model characteristic\n", Res);
+		log("Setting speed 0\n");
+		setFuckMachineSpeed(0);
+		log("Signalling connected event\n");
+		return; // Success
+	}
 
 	disconnect();
-}
-
-void HismithDevice::wclGattClientDisconnect(void* Sender, const int Reason) {
-	debug("Buttplug disconnected, reason = 0x%X\n", Reason);
-	_status = BP_DISCONNECTED;
-	System::SetEvent(_connectedEvent);
-}
-
-void HismithDevice::wclGattClientCharacteristicChanged(void* Sender, const unsigned short Handle,
-	const unsigned char* const Value, const unsigned long Length) {
-
-	System::SignalSema(&_runningCommand);
-
-	std::string response((const char*)Value, Length);
-	
 }
 
 void HismithDevice::setVibrate(unsigned char effectiveVibrationPercent) {
@@ -165,32 +77,11 @@ void HismithDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	}
 }
 
-int HismithDevice::getBatteryLevel() const {
-	return 128;
-}
+const wclGattUuid HismithDevice::INFO_SERVICE_UUID = { true, 0xFF90, { 0x0000ff90, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
+const wclGattUuid HismithDevice::INFO_SERVICE_CHARAC_UUID = { true, 0xFF96, { 0x0000ff96, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
 
-const std::string& HismithDevice::getDeviceName() const {
-	return _deviceName;
-}
+const wclGattUuid HismithDevice::TX_SERVICE_UUID = { true, 0xFFE5, { 0x0000ffe5, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
+const wclGattUuid HismithDevice::TX_CHARAC = { true, 0xFFE9, { 0x0000ffe9, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };;
 
-bool HismithDevice::isConnected() {
-	if (_status == BP_DISCONNECTED)
-		connect();
-	return _status == BP_CONNECTED;
-}
-
-const int HismithDevice::CONNECT_RETRY_MS = 2500;
-
-const int HismithDevice::MAX_VIBRATION_SETTING = 20;
-
-const wclGattUuid HismithDevice::GENERIC_ACCESS_SERVICE_UUID = { true, 0x1800, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
-const wclGattUuid HismithDevice::DEVICE_NAME_CHARAC_UUID = { true, 0x2A00, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
-
-const wclGattUuid HismithDevice::INFO_SERVICE_UUID = { false, 0, { 0x0000ff90, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-const wclGattUuid HismithDevice::INFO_SERVICE_CHARAC_UUID = { false, 0, { 0x0000ff96, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-
-const wclGattUuid HismithDevice::TX_SERVICE_UUID = { false, 0, { 0x0000ffe5, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-const wclGattUuid HismithDevice::TX_CHARAC = { false, 0, { 0x0000ffe9, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };;
-
-const wclGattUuid HismithDevice::RX_SERVICE_UUID = { false, 0, { 0x0000ffe0, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-const wclGattUuid HismithDevice::RX_CHARAC = { false, 0, { 0x0000ffe4, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
+const wclGattUuid HismithDevice::RX_SERVICE_UUID = { true, 0xFFE0, { 0x0000ffe0, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
+const wclGattUuid HismithDevice::RX_CHARAC = { true, 0xFFE4, { 0x0000ffe4, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };

@@ -6,45 +6,56 @@
 
 using namespace wclBluetooth;
 
-struct ButtplugDeviceDefinition {
-	wclGattUuid serviceId;
-	wclGattUuid txCharacteristicId;
-	wclGattUuid rxCharacteristicId;
-};
-
 typedef unsigned long long BtAddress;
 
 std::string Mac2String(BtAddress Address);
-
-class GenericProperty {
-public:
-	GenericProperty();
-	GenericProperty(unsigned char value);
-	unsigned char adjust(int by);
-	unsigned char get() const;
-	unsigned char set(unsigned char value);
-private:
-	unsigned char _value;
-};
+std::string UuidToString(wclGattUuid uuid);
 
 class ButtplugDevice {
 public:
-	ButtplugDevice(ButtplugConfig& config);
-	virtual void connect() = 0;
-	virtual bool isConnected() = 0;
-	virtual const std::string& getDeviceName() const = 0;
+	ButtplugDevice(ButtplugConfig& config, BtAddress deviceAddress);
+	virtual ~ButtplugDevice();
+	void connect();
+	bool isConnected();
+	const std::string& getDeviceName() const;
 
 	void adjustVibration(int bySmallRumble, int byBigRumble);
 	void getVibrate(int* smallRumble, int* bigRumble) const;
 	void setVibrate(unsigned char smallRumble, unsigned char bigRumble);
 	int getEffectiveVibration() const;
 
-	virtual int getBatteryLevel() const = 0;
+	int getBatteryLevel() const;
 
-	GenericProperty _smallRumbleIntensity, _bigRumbleIntensity;
+	int _smallRumbleIntensity, _bigRumbleIntensity;
 protected:
+	enum Status {
+		BP_DISCONNECTED,
+		BP_CONNECTING,
+		BP_CONNECTED
+	};
+	void disconnect();
+
+	virtual void onConnectionEstablished() = 0;
+	virtual void onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) = 0;
 	virtual void setVibrate(unsigned char effectiveVibration) = 0;
+	
+	CwclBluetoothManager _wclBluetoothManager;
+	CwclGattClient _wclGattClient;
+
 	ButtplugConfig& _config;
+	std::string _deviceName;
+	Status _status;
+	int _currentDeviceVibration;
+	int _batteryLevel;
 private:
+	std::string getGapName();
+	void wclGattClientConnect(void* Sender, const int Error);
+	void wclGattClientDisconnect(void* Sender, const int Reason);
+	void wclGattClientCharacteristicChanged(void* Sender, const unsigned short Handle,
+		const unsigned char* const Value, const unsigned long Length);
+
+	unsigned long long _connectRetryAt;
 	unsigned char _effectiveVibrationPercent;
+
+	static const wclGattUuid GENERIC_ACCESS_SERVICE_UUID, DEVICE_NAME_CHARAC_UUID;
 };

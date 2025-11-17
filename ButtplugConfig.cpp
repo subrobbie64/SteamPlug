@@ -9,7 +9,7 @@
 const char* ButtplugConfig::CFG_FILENAME = "SteamPlug64.cfg";
 
 ButtplugConfig::ButtplugConfig() 
-	: _hushAddress(0), _coyoteAddress(0), _type(-1), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
+	: _hushAddress(0), _coyoteAddress(0), _hismithAddress(0), _type(-1), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
 }
 
 ButtplugConfig::ButtplugConfig(BtAddress hushAddress, BtAddress coyoteAddress, int type) 
@@ -34,6 +34,14 @@ BtAddress ButtplugConfig::getCoyoteAddress() const {
 
 void ButtplugConfig::setCoyoteAddress(BtAddress address) {
 	_coyoteAddress = address;
+}
+
+BtAddress ButtplugConfig::getHismithAddress() const {
+	return _hismithAddress;
+}
+
+void ButtplugConfig::setHismithAddress(BtAddress address) {
+	_hismithAddress = address;
 }
 
 int ButtplugConfig::getHushType() const {
@@ -96,6 +104,8 @@ void ButtplugConfig::toFile() const {
 		fprintf(outf, "TYPE=%d\n", _type);
 		address = (unsigned char*)&_coyoteAddress;
 		fprintf(outf, "COYOTE=%02X:%02X:%02X:%02X:%02X:%02X\n", address[5], address[4], address[3], address[2], address[1], address[0]);
+		address = (unsigned char*)&_hismithAddress;
+		fprintf(outf, "HISMITH=%02X:%02X:%02X:%02X:%02X:%02X\n", address[5], address[4], address[3], address[2], address[1], address[0]);
 		fprintf(outf, "L=%d\nR=%d\n", _vibrateLeft, _vibrateRight);
 		fprintf(outf, "ENABLE_COYOTE_200=%d\n", _enableCoyote200 ? 1 : 0);
 		fprintf(outf, "CHA=%d\nCHB=%d\n", _channelA, _channelB);
@@ -130,6 +140,8 @@ ButtplugConfig *ButtplugConfig::fromFile() {
 				config->setHushType(atoi(line + 5));
 			else if (strncmp(line, "COYOTE=", 7) == 0)
 				config->setCoyoteAddress(getBtAddressFromString(line + 7));
+			else if (strncmp(line, "HISMITH=", 8) == 0)
+				config->setHismithAddress(getBtAddressFromString(line + 8));
 			else if (strncmp(line, "ENABLE_COYOTE_200=", 18) == 0)
 				config->setEnableCoyote200(atoi(line + 18) != 0);
 			else if (strncmp(line, "L=", 2) == 0)

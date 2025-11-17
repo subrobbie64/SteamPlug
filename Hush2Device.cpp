@@ -2,121 +2,35 @@
 #include "ButtplugConfig.h"
 #include <algorithm>
 
-HushDevice::HushDevice(ButtplugConfig& config)
-	: ButtplugDevice(config), _buttplugService(), _rxCharac(), _txCharac(), _status(BP_DISCONNECTED), _deviceId(), _deviceName() {
+#define CHECK_BATTERY_INTERVAL 15000000 // 15 seconds
 
-	_definition = &HUSH_DEVICE[config.getHushType()];
-
-	_vibration = 0;
-	_batteryLevel = 0;
-
-	_connectRetryAt = 0;
-	_connectedEvent = System::CreateEventFlag();
+HushDevice::HushDevice(ButtplugConfig& config) : ButtplugDevice(config, config.getHushAddress()), _buttplugService(), _rxCharac(), _txCharac(), _deviceId(), _readBatteryAt(0) {
 	System::CreateSema(&_runningCommand, 1);
-
-	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &HushDevice::wclGattClientConnect);
-	__hook(&CwclGattClient::OnDisconnect, &_wclGattClient, &HushDevice::wclGattClientDisconnect);
-	__hook(&CwclGattClient::OnCharacteristicChanged, &_wclGattClient, &HushDevice::wclGattClientCharacteristicChanged);
-
-	_wclBluetoothManager.SetMessageProcessing(mpAsync);
-	int res = _wclBluetoothManager.Open();
-	if (res != WCL_E_SUCCESS)
-		error("Error opening Bluetooth manager: 0x%X", res);
-
-	_wclGattClient.Address = config.getHushAddress();
-	_wclGattClient.ConnectOnRead = true;
-	_wclGattClient.ForceNotifications = false;
 }
 
 HushDevice::~HushDevice() {
-	__unhook(&CwclGattClient::OnConnect, &_wclGattClient, &HushDevice::wclGattClientConnect);
-	__unhook(&CwclGattClient::OnDisconnect, &_wclGattClient, &HushDevice::wclGattClientDisconnect);
-	__unhook(&CwclGattClient::OnCharacteristicChanged, &_wclGattClient, &HushDevice::wclGattClientCharacteristicChanged);
-
-	System::DestroyEventFlag(_connectedEvent);
 	System::DestroySema(&_runningCommand);
 }
 
-void HushDevice::connect() {
-	if (_connectRetryAt > System::GetMicros()) {
-		debug("connect(): Waiting for retry delay\n");
-		return;
-	}
-
-	_connectRetryAt = System::GetMicros() + CONNECT_RETRY_MS * 1000;
-	_vibration = 0;
-
-	debug("Trying to connect to Buttplug device...\n");
-	CwclBluetoothRadio* Radio;
-	int Res = _wclBluetoothManager.GetLeRadio(Radio);
-	if (Res != WCL_E_SUCCESS)
-		error("Get working radio failed");
-
-	System::ResetEvent(_connectedEvent);
-	_status = BP_CONNECTING;
-	Res = _wclGattClient.Connect(Radio);
-	if (Res != WCL_E_SUCCESS) {
-		debug("GATT Connect error: %02X", Res);
-		disconnect();
-	}
-}
-
-void HushDevice::disconnect() {
-	_wclGattClient.Disconnect();
-	_status = BP_DISCONNECTED;
-	System::SetEvent(_connectedEvent);
-}
-
-std::string HushDevice::getGapName() {
-	std::string deviceName;
-
-	wclGattService genericAccessService;
-	if (_wclGattClient.FindService(GENERIC_ACCESS_SERVICE_UUID, genericAccessService) == WCL_E_SUCCESS) {
-		wclGattCharacteristic deviceNameCharac;
-		if (_wclGattClient.FindCharacteristic(genericAccessService, DEVICE_NAME_CHARAC_UUID, deviceNameCharac) == WCL_E_SUCCESS) {
-			unsigned char* nameBuffer;
-			unsigned long length;
-			if (_wclGattClient.ReadCharacteristicValue(deviceNameCharac, goNone, nameBuffer, length) == WCL_E_SUCCESS) {
-				if (nameBuffer) {
-					deviceName = std::string((const char*)nameBuffer, length);
-					free(nameBuffer);
-				}
-			}
-		}
-	}
-	return deviceName;
-}
-
-void HushDevice::wclGattClientConnect(void* Sender, const int Error) {
+void HushDevice::onConnectionEstablished() {
+	const ButtplugDeviceDefinition*  buttplugDefinition = &HUSH_DEVICE[_config.getHushType()];
 	int Res;
-	if (Error == WCL_E_SUCCESS) {
-		_deviceName = getGapName();
-		if ((Res = _wclGattClient.FindService(_definition->serviceId, _buttplugService)) != WCL_E_SUCCESS)
-			debug("FindService failed 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.FindCharacteristic(_buttplugService, _definition->txCharacteristicId, _txCharac)) != WCL_E_SUCCESS)
-			debug("FindCharacteristic (TX) Error: 0x%X", Res);
-		else if ((Res = _wclGattClient.FindCharacteristic(_buttplugService, _definition->rxCharacteristicId, _rxCharac)) != WCL_E_SUCCESS)
-			debug("FindCharacteristic (RX) Error: 0x%X", Res);
-		else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
-			debug("Subscribe failed Error 0x%X!\n", Res);
-		else if ((Res = _wclGattClient.WriteClientConfiguration(_rxCharac, true, goNone)) != WCL_E_SUCCESS)
-			debug("WriteClientConfiguration->SubscribeForNotifications failed 0x%X\n", Res);
-		else if (!issueCommand("DeviceType;"))
-			debug("Unable to query device type\n");
-		else
-			return; // Success
-	} else if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
-		debug("BTLE device not found.\n");
+	if ((Res = _wclGattClient.FindService(buttplugDefinition->serviceId, _buttplugService)) != WCL_E_SUCCESS)
+		debug("FindService failed 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.FindCharacteristic(_buttplugService, buttplugDefinition->txCharacteristicId, _txCharac)) != WCL_E_SUCCESS)
+		debug("FindCharacteristic (TX) Error: 0x%X", Res);
+	else if ((Res = _wclGattClient.FindCharacteristic(_buttplugService, buttplugDefinition->rxCharacteristicId, _rxCharac)) != WCL_E_SUCCESS)
+		debug("FindCharacteristic (RX) Error: 0x%X", Res);
+	else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
+		debug("Subscribe failed Error 0x%X!\n", Res);
+	else if ((Res = _wclGattClient.WriteClientConfiguration(_rxCharac, true, goNone)) != WCL_E_SUCCESS)
+		debug("WriteClientConfiguration->SubscribeForNotifications failed 0x%X\n", Res);
+	else if (!issueCommand("DeviceType;"))
+		debug("Unable to query device type\n");
 	else
-		debug("Connection failed with error 0x%X\n", Error);
-
+		return; // Success
+	
 	disconnect();
-}
-
-void HushDevice::wclGattClientDisconnect(void* Sender, const int Reason) {
-	debug("Buttplug disconnected, reason = 0x%X\n", Reason);
-	_status = BP_DISCONNECTED;
-	System::SetEvent(_connectedEvent);
 }
 
 bool HushDevice::issueCommand(const char* commandString) {
@@ -133,8 +47,7 @@ bool HushDevice::issueCommand(const char* commandString) {
 	return false;
 }
 
-void HushDevice::wclGattClientCharacteristicChanged(void* Sender, const unsigned short Handle,
-	const unsigned char* const Value, const unsigned long Length) {
+void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
 
 	System::SignalSema(&_runningCommand);
 
@@ -148,19 +61,23 @@ void HushDevice::wclGattClientCharacteristicChanged(void* Sender, const unsigned
 		_batteryLevel = std::stoi(response);
 		if (_status == BP_CONNECTING) {
 			_status = BP_CONNECTED;
-			System::SetEvent(_connectedEvent);
 		}
-	} else if (response.compare("POWEROFF;") == 0)
+	} else if (response.compare("POWEROFF;") == 0) {
 		disconnect();
-	else if (response.compare("OK;") != 0)
+	} else if (response.compare("OK;") == 0) {
+		if (_readBatteryAt < System::GetMicros()) {
+			issueCommand("Battery;");
+			_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL;
+		}
+	} else
 		debug("Unknown BP response! (Length = %d): %s\n", Length, response.c_str());
 }
 
 void HushDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	if (_status != BP_CONNECTED)
 		return;
-	if (_vibration != effectiveVibrationPercent) {
-		_vibration = effectiveVibrationPercent;
+	if (_currentDeviceVibration != effectiveVibrationPercent) {
+		_currentDeviceVibration = effectiveVibrationPercent;
 		char commandBuffer[16];
 		int vibrateSetting = std::clamp((effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
 		sprintf(commandBuffer, "Vibrate:%d;", vibrateSetting);
@@ -174,32 +91,11 @@ bool HushDevice::readBatteryLevel() {
 	return issueCommand("Battery;");
 }
 
-int HushDevice::getBatteryLevel() const {
-	if (_status != BP_CONNECTED)
-		return 0;
-	return _batteryLevel;
-}
-
 const std::string& HushDevice::getDeviceId() const {
 	return _deviceId;
 }
 
-const std::string& HushDevice::getDeviceName() const {
-	return _deviceName;
-}
-
-bool HushDevice::isConnected() {
-	if (_status == BP_DISCONNECTED)
-		connect();
-	return _status == BP_CONNECTED;
-}
-
-const int HushDevice::CONNECT_RETRY_MS = 2500;
-
 const int HushDevice::MAX_VIBRATION_SETTING = 20;
-
-const wclGattUuid HushDevice::GENERIC_ACCESS_SERVICE_UUID = { true, 0x1800, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
-const wclGattUuid HushDevice::DEVICE_NAME_CHARAC_UUID = { true, 0x2A00, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
 
 const ButtplugDeviceDefinition HushDevice::HUSH_DEVICE[] = {
 	{{ false, 0, { 0x0000fff0, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }}},
