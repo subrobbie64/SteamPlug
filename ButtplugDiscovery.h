@@ -15,7 +15,6 @@ public:
 
 protected:
 	virtual bool probeDevice(const std::string& gapName, BtAddress address) = 0; 
-	virtual void onDiscoveryCompleted(ButtplugConfig* config, BtAddress foundDevice) = 0;
 
 	CwclGattClient _wclGattClient;
 private:

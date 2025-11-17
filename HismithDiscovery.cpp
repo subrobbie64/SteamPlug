@@ -41,7 +41,3 @@ bool HismithDiscovery::probeDevice(const std::string& gapName, BtAddress address
 		log(" - error 0x%X reading services.", Res);
 	return false;
 }
-
-void HismithDiscovery::onDiscoveryCompleted(ButtplugConfig* config, BtAddress foundDevice) {
-	config->setAddress(foundDevice);
-}

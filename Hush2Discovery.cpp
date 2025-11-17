@@ -22,11 +22,6 @@ bool HushDiscovery::probeDevice(const std::string& gapName, BtAddress address) {
 	return false;
 }
 
-void HushDiscovery::onDiscoveryCompleted(ButtplugConfig* config, BtAddress foundDevice) {
-	config->setAddress(foundDevice);
-	config->setHushType(_discoveredHushDeviceType);
-}
-
 int HushDiscovery::getHushDeviceType(wclGattServices& services) {
 	for (wclGattService& service : services) {
 		if (service.Uuid.IsShortUuid)

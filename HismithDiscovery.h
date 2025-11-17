@@ -11,7 +11,6 @@ public:
 
 protected:
 	virtual bool probeDevice(const std::string& gapName, BtAddress address) override; 
-	virtual void onDiscoveryCompleted(ButtplugConfig* config, BtAddress foundDevice) override;
 private:
 	bool isHismithDevice(BtAddress address, wclGattServices& services);
 };
