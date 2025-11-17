@@ -13,6 +13,7 @@ protected:
 	virtual void onConnectionEstablished();
 
 private:
+	void runCommand(unsigned char command, unsigned char value);
 	void setFuckMachineSpeed(int speed);
 	unsigned short getDeviceModelId();
 

@@ -30,8 +30,6 @@ private:
 
 	sysevent_t _rumbleEvent;
 
-	Status _status;
-
 	volatile bool _stopThread;
 	systhread_t _streamThread;
 

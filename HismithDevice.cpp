@@ -3,7 +3,7 @@
 #include <algorithm>
 
 HismithDevice::HismithDevice(ButtplugConfig& config)
-	: ButtplugDevice(config, config.getHismithAddress()), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac(), _deviceId(0) {
+	: ButtplugDevice(config, config.getAddress()), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac(), _deviceId(0) {
 
 	_vibration = 0;
 	_batteryLevel = 128;
@@ -12,15 +12,19 @@ HismithDevice::HismithDevice(ButtplugConfig& config)
 HismithDevice::~HismithDevice() {
 }
 
-void HismithDevice::setFuckMachineSpeed(int speed) {
+void HismithDevice::runCommand(unsigned char command, unsigned char value) {
 	unsigned char commandBuffer[4];
 	commandBuffer[0] = 0xAA;
-	commandBuffer[1] = 0x4;
-	commandBuffer[2] = speed;
-	commandBuffer[3] = 0x4 + speed;
+	commandBuffer[1] = command;
+	commandBuffer[2] = value;
+	commandBuffer[3] = command + value;
 	const int Res = _wclGattClient.WriteCharacteristicValue(_txCharac, commandBuffer, 4, plNone, wkWithoutResponse);
 	if (Res != WCL_E_SUCCESS)
 		debug("WriteCharacteristicValue failed 0x%X\n", Res);
+}
+
+void HismithDevice::setFuckMachineSpeed(int speed) {
+	runCommand(0x04, (unsigned char)speed);
 }
 
 void HismithDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
@@ -78,9 +82,7 @@ void HismithDevice::onConnectionEstablished() {
 }
 
 void HismithDevice::setVibrate(unsigned char effectiveVibrationPercent) {
-	if (_status != BP_CONNECTED)
-		return;
-	if (_vibration != effectiveVibrationPercent) {
+	if (isConnected() && (_vibration != effectiveVibrationPercent)) {
 		_vibration = effectiveVibrationPercent;
 		setFuckMachineSpeed(std::clamp((int)effectiveVibrationPercent, 0, 100));
 	}

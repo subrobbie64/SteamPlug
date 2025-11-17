@@ -11,19 +11,25 @@
 #include "XBoxPad.h"
 #include "DualShockPad.h"
 #include "System.h"
-
+#include "Coyote3Discovery.h"
+#include "Coyote3Device.h"
 #include <conio.h>
 #include "resource.h"
 
 #pragma warning(disable: 6255)
 
+#ifdef USE_HUSH2
+#define DEVICE_NAME "Buttplug"
+#elif USE_COYOTE
+#define DEVICE_NAME "Coyote"
+#else
+#define DEVICE_NAME "Hismith fuck machine"
+#endif
+
 #define PLUG_BATTERY_LEVEL_LOW 20
 #define PLUG_BATTERY_LEVEL_CRITICAL 10
 #define RUMBLE_STEP 2
 #define DETECT_PAD_DELAY_MICROS 2500000
-
-#include "Coyote3Discovery.h"
-#include "Coyote3Device.h"
 
 class SteamPlugMain {
 public:
@@ -90,18 +96,18 @@ void SteamPlugMain::openButtplugDevice() {
     _buttplugConfig = ButtplugConfig::fromFile();
 	ButtplugDiscovery* deviceDiscovery = NULL;
 #ifdef USE_HUSH2
-    if (!_buttplugConfig->getHushAddress()) {
+    if (!_buttplugConfig->getAddress()) {
         log("No Hush2 Buttplug address found in config, running Discovery!\n");
         deviceDiscovery = new HushDiscovery();
     }
-#elseif USE_COYOTE
-    if (!_buttplugConfig->getCoyoteAddress()) {
+#elif USE_COYOTE
+    if (!_buttplugConfig->getAddress()) {
         log("No Coyote 3.0 address found in config, running Discovery!\n");
 		deviceDiscovery = new CoyoteDiscovery();
     }
 #else
-    if (!_buttplugConfig->getHismithAddress()) {
-        log("No getHismith address found in config, running Discovery!\n");
+    if (!_buttplugConfig->getAddress()) {
+        log("No Hismith address found in config, running Discovery!\n");
         deviceDiscovery = new HismithDiscovery();
     }
 #endif
@@ -117,10 +123,10 @@ void SteamPlugMain::openButtplugDevice() {
     }
 
 #ifdef USE_HUSH2
-    log("Trying to connect Buttplug at %s...", Mac2String(_buttplugConfig->getHushAddress()).c_str());
+    log("Trying to connect Buttplug at %s...", Mac2String(_buttplugConfig->getAddress()).c_str());
     _buttplugDevice = new HushDevice(*_buttplugConfig);
 #elif USE_COYOTE
-    log("Trying to connect Coyote 3.0 at %s...", Mac2String(_buttplugConfig->getCoyoteAddress()).c_str());
+    log("Trying to connect Coyote 3.0 at %s...", Mac2String(_buttplugConfig->getAddress()).c_str());
     _coyoteDevice = new CoyoteDevice(*_buttplugConfig);
     _buttplugDevice = _coyoteDevice;
 #else
@@ -192,13 +198,6 @@ PhysicalPad* SteamPlugMain::openGamePad(ControllerMode *mode, int *physicalPadIn
     return NULL;
 }
 
-#ifdef USE_HUSH2
-#define DEVICE_NAME "Buttplug"
-#elif USE_COYOTE
-#define DEVICE_NAME "Coyote"
-#else
-#define DEVICE_NAME "Hismith fuck machine"
-#endif
 void SteamPlugMain::run() {
     openButtplugDevice();
 	_virtualPad = new VirtualPad(*_buttplugDevice);
@@ -258,9 +257,6 @@ void SteamPlugMain::run() {
 			printBar(YELLOW, LINE_TEST_STATUS + 2, "Small motor:", (100 * right) / 255);
             printBar(RED,    LINE_TEST_STATUS + 3, "Buttplug:   ", rumblePlug);
             printXy(0, LINE_TEST_STATUS + 4, RED, "Use left and right analog sticks");
-            
-            if (_kbhit() && (_getch() == 't'))
-                testing = false;
         }
         if (_virtualPad->getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight) || (cycleCount == 0)) {
             rumblePlug = _buttplugDevice->getEffectiveVibration();
@@ -273,10 +269,10 @@ void SteamPlugMain::run() {
 				int key = _kbhit() ? _getch() : 0;
                 int adjustLeft, adjustRight;
                 if (key == 't')
-                    testing = true;
-                else if (keyToAction(key, &adjustLeft, &adjustRight))
+                    testing = !testing;
+                if (keyToAction(key, &adjustLeft, &adjustRight))
                     _buttplugDevice->adjustVibration(adjustLeft, adjustRight);
-#ifndef USE_HUSH2
+#ifdef USE_COYOTE
 				else if (keyToCoyoteAction(key, &adjustLeft, &adjustRight))
                     _coyoteDevice->adjustChannelIntensity(adjustLeft, adjustRight);
 #endif

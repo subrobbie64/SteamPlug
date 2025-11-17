@@ -32,5 +32,5 @@ bool CoyoteDiscovery::probeDevice(const std::string& gapName, BtAddress address)
 }
 
 void CoyoteDiscovery::onDiscoveryCompleted(ButtplugConfig* config, BtAddress foundDevice) {
-	config->setCoyoteAddress(foundDevice);
+	config->setAddress(foundDevice);
 }

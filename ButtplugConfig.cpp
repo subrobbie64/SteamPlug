@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "ButtplugConfig.h"
 #include "ButtplugDevice.h"
 #include "System.h"
@@ -6,42 +7,24 @@
 #define BUTTPLUG_WEIGHT_LEFT (13 * 5)
 #define BUTTPLUG_WEIGHT_RIGHT (7 * 5)
 
-const char* ButtplugConfig::CFG_FILENAME = "SteamPlug64.cfg";
-
 ButtplugConfig::ButtplugConfig() 
-	: _hushAddress(0), _coyoteAddress(0), _hismithAddress(0), _type(-1), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
+	: _address(0), _type(-1), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
 }
 
-ButtplugConfig::ButtplugConfig(BtAddress hushAddress, BtAddress coyoteAddress, int type) 
-	: _hushAddress(hushAddress), _coyoteAddress(coyoteAddress), _type(type), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
+/*ButtplugConfig::ButtplugConfig(BtAddress hushAddress, BtAddress coyoteAddress, int type)
+	: _address(hushAddress), _type(type), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
+}*/
+
+ButtplugConfig::ButtplugConfig(BtAddress deviceAddress, int type, int vibrateLeft, int vibrateRight, BtAddress coyoteAddress, bool enable200, int channelA, int channelB) 
+	: _address(deviceAddress), _type(type), _vibrateLeft(vibrateLeft), _vibrateRight(vibrateRight), _enableCoyote200(enable200), _channelA(channelA), _channelB(channelB) {
 }
 
-ButtplugConfig::ButtplugConfig(BtAddress hushAddress, int type, int vibrateLeft, int vibrateRight, BtAddress coyoteAddress, bool enable200, int channelA, int channelB) 
-	: _hushAddress(hushAddress), _coyoteAddress(coyoteAddress), _type(type), _vibrateLeft(vibrateLeft), _vibrateRight(vibrateRight), _enableCoyote200(enable200), _channelA(channelA), _channelB(channelB) {
+BtAddress ButtplugConfig::getAddress() const {
+	return _address;
 }
 
-BtAddress ButtplugConfig::getHushAddress() const {
-	return _hushAddress;
-}
-
-void ButtplugConfig::setHushAddress(BtAddress address) {
-	_hushAddress = address;
-}
-
-BtAddress ButtplugConfig::getCoyoteAddress() const {
-	return _coyoteAddress;
-}
-
-void ButtplugConfig::setCoyoteAddress(BtAddress address) {
-	_coyoteAddress = address;
-}
-
-BtAddress ButtplugConfig::getHismithAddress() const {
-	return _hismithAddress;
-}
-
-void ButtplugConfig::setHismithAddress(BtAddress address) {
-	_hismithAddress = address;
+void ButtplugConfig::setAddress(BtAddress address) {
+	_address = address;
 }
 
 int ButtplugConfig::getHushType() const {
@@ -88,30 +71,20 @@ void ButtplugConfig::setVibration(int vibrateLeft, int vibrateRight) {
 	_vibrateRight = vibrateRight;
 }
 
-void ButtplugConfig::setVibrateLeft(int vibrateLeft) {
-	_vibrateLeft = vibrateLeft;
-}
-
-void ButtplugConfig::setVibrateRight(int vibrateRight) {
-	_vibrateRight = vibrateRight;
-}
-
 void ButtplugConfig::toFile() const {
-	FILE* outf = fopen(CFG_FILENAME, "w");
+	char cfgFilename[512];
+	getConfigFilename(cfgFilename);
+	FILE* outf = fopen(cfgFilename, "w");
 	if (outf) {
-		unsigned char* address = (unsigned char*)&_hushAddress;
-		fprintf(outf, "HUSH=%02X:%02X:%02X:%02X:%02X:%02X\n", address[5], address[4], address[3], address[2], address[1], address[0]);
+		unsigned char* address = (unsigned char*)&_address;
+		fprintf(outf, "ADDRESS=%02X:%02X:%02X:%02X:%02X:%02X\n", address[5], address[4], address[3], address[2], address[1], address[0]);
 		fprintf(outf, "TYPE=%d\n", _type);
-		address = (unsigned char*)&_coyoteAddress;
-		fprintf(outf, "COYOTE=%02X:%02X:%02X:%02X:%02X:%02X\n", address[5], address[4], address[3], address[2], address[1], address[0]);
-		address = (unsigned char*)&_hismithAddress;
-		fprintf(outf, "HISMITH=%02X:%02X:%02X:%02X:%02X:%02X\n", address[5], address[4], address[3], address[2], address[1], address[0]);
 		fprintf(outf, "L=%d\nR=%d\n", _vibrateLeft, _vibrateRight);
 		fprintf(outf, "ENABLE_COYOTE_200=%d\n", _enableCoyote200 ? 1 : 0);
 		fprintf(outf, "CHA=%d\nCHB=%d\n", _channelA, _channelB);
 		fclose(outf);
 	} else
-		log("Unable to write config file \"%s\"\n", CFG_FILENAME);
+		log("Unable to write config file \"%s\"\n", cfgFilename);
 }
 
 BtAddress getBtAddressFromString(const char* str) {
@@ -130,30 +103,46 @@ BtAddress getBtAddressFromString(const char* str) {
 
 ButtplugConfig *ButtplugConfig::fromFile() {
 	ButtplugConfig* config = new ButtplugConfig();
-	FILE* file = fopen(CFG_FILENAME, "r");
+	char cfgFilename[512];
+	getConfigFilename(cfgFilename);
+	FILE* file = fopen(cfgFilename, "r");
 	if (file) {
 		char line[256];
 		while (fgets(line, sizeof(line), file)) {
-			if (strncmp(line, "HUSH=", 5) == 0)
-				config->setHushAddress(getBtAddressFromString(line + 5));
-			else if (strncmp(line, "TYPE=", 5) == 0)
-				config->setHushType(atoi(line + 5));
-			else if (strncmp(line, "COYOTE=", 7) == 0)
-				config->setCoyoteAddress(getBtAddressFromString(line + 7));
-			else if (strncmp(line, "HISMITH=", 8) == 0)
-				config->setHismithAddress(getBtAddressFromString(line + 8));
-			else if (strncmp(line, "ENABLE_COYOTE_200=", 18) == 0)
-				config->setEnableCoyote200(atoi(line + 18) != 0);
+			if (strncmp(line, "ADDRESS=", 8) == 0)
+				config->setAddress(getBtAddressFromString(line + 8));
 			else if (strncmp(line, "L=", 2) == 0)
-				config->setVibrateLeft(atoi(line + 2));
+				config->_vibrateLeft = atoi(line + 2);
 			else if (strncmp(line, "R=", 2) == 0)
-				config->setVibrateRight(atoi(line + 2));
+				config->_vibrateRight = atoi(line + 2);
 			else if (strncmp(line, "CHA=", 4) == 0)
 				config->setChannelA(atoi(line + 4));
 			else if (strncmp(line, "CHB=", 4) == 0)
 				config->setChannelB(atoi(line + 4));
+			else if (strncmp(line, "TYPE=", 5) == 0)
+				config->setHushType(atoi(line + 5));
+			else if (strncmp(line, "ENABLE_LEVEL_200=", 17) == 0)
+				config->setEnableCoyote200(atoi(line + 17) != 0);
 		}
 		fclose(file);
 	}
 	return config;
 }
+
+void ButtplugConfig::getConfigFilename(char* buffer) {
+	char fullPath[512];
+	GetModuleFileName(NULL, fullPath, 512);
+	char* sep = strrchr(fullPath, '\\');
+	if (sep)
+		sep++;
+	else
+		sep = fullPath;
+		
+	strcpy(buffer, sep);
+	char *suffix = strchr(buffer, '.');
+	if (suffix)
+		strcpy(suffix, ".cfg");
+	else
+		strcat(buffer, ".cfg");
+}
+

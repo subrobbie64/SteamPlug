@@ -11,7 +11,7 @@
 std::string Mac2String(BtAddress Address);
 
 CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
-	: ButtplugDevice(config, config.getCoyoteAddress()), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac(), _status(BP_DISCONNECTED) {
+	: ButtplugDevice(config, config.getAddress()), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
 
 	_rumbleEvent = System::CreateEventFlag();
 	
@@ -22,8 +22,6 @@ CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	config.getChannels(&chA, &chB);
 	_levelA = chA;
 	_levelB = chB;
-	_currentDeviceVibration = 0;
-	_batteryLevel = 0;
 	_readBatteryAt = 0;
 
 	_stopThread = false;
@@ -64,13 +62,13 @@ void CoyoteDevice::onConnectionEstablished() {
 	}
 
 	_wclGattClient.Disconnect();
-	_status = BP_DISCONNECTED;
+	_status = BT_DISCONNECTED;
 }
 
 void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
 
 	if ((Length == 6) && (Value[0] == 0x53)) { // Device ID & lighting configuration after connect, i.e. 53 00 93 3B 2D 05
-		_status = BP_CONNECTED;
+		_status = BT_CONNECTED;
 	} else if ((Length == 4) && (Value[0] == 0x51)) { // Battery status, i.e. 51 00 10 64
 		_batteryLevel = Value[3]; 
 	} else if ((Length == 4) && (Value[0] == 0xB1)) { // Confirmation of 0xBF, i.e. B1 01 50 50
@@ -138,9 +136,24 @@ void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	}
 }
 
+void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity) {
+	unsigned char commandBuf[7];
+	commandBuf[0] = 0xBF;
+	// Channel limits 0~200
+	commandBuf[1] = aChLimit;
+	commandBuf[2] = bChLimit;
+	// 0~255, the larger the value, the stronger the impact of the lower frequencies
+	commandBuf[3] = aChFreqBalance;
+	commandBuf[4] = bChFreqBalance;
+	// 0~255, the pulse width. the larger the value, the stronger the impact of the lower frequencies
+	commandBuf[5] = aChFreqIntensity;
+	commandBuf[6] = bChFreqIntensity;
+	_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 7, plNone, wkWithoutResponse);
+}
+
 void CoyoteDevice::streamThread() {
 	while (!_stopThread) {
-		if (_status == BP_CONNECTED) {
+		if (isConnected()) {
 			unsigned char commandBuf[20];
 			commandBuf[0] = 0xB0;
 			commandBuf[1] = commandBuf[2] = commandBuf[3] = 0x00;
@@ -193,21 +206,6 @@ void CoyoteDevice::streamThread() {
 threadReturn WINAPI CoyoteDevice::streamThreadFunc(void* arg) {
 	((CoyoteDevice*)arg)->streamThread();
 	return THREAD_RETURN;
-}
-
-void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity) {
-	unsigned char commandBuf[7];
-	commandBuf[0] = 0xBF;
-	// Channel limits 0~200
-	commandBuf[1] = aChLimit;
-	commandBuf[2] = bChLimit;
-	// 0~255, the larger the value, the stronger the impact of the lower frequencies
-	commandBuf[3] = aChFreqBalance;
-	commandBuf[4] = bChFreqBalance;
-	// 0~255, the pulse width. the larger the value, the stronger the impact of the lower frequencies
-	commandBuf[5] = aChFreqIntensity;
-	commandBuf[6] = bChFreqIntensity;
-	_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 7, plNone, wkWithoutResponse);
 }
 
 const std::string CoyoteDevice::DEVICE_NAME = "47L121000";

@@ -29,9 +29,9 @@ public:
 	int _smallRumbleIntensity, _bigRumbleIntensity;
 protected:
 	enum Status {
-		BP_DISCONNECTED,
-		BP_CONNECTING,
-		BP_CONNECTED
+		BT_DISCONNECTED,
+		BT_CONNECTING,
+		BT_CONNECTED
 	};
 	void disconnect();
 
@@ -42,11 +42,12 @@ protected:
 	CwclBluetoothManager _wclBluetoothManager;
 	CwclGattClient _wclGattClient;
 
+	int _currentDeviceVibration;
+	int _batteryLevel;
+
 	ButtplugConfig& _config;
 	std::string _deviceName;
 	Status _status;
-	int _currentDeviceVibration;
-	int _batteryLevel;
 private:
 	std::string getGapName();
 	void wclGattClientConnect(void* Sender, const int Error);

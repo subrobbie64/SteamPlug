@@ -43,5 +43,5 @@ bool HismithDiscovery::probeDevice(const std::string& gapName, BtAddress address
 }
 
 void HismithDiscovery::onDiscoveryCompleted(ButtplugConfig* config, BtAddress foundDevice) {
-	config->setHismithAddress(foundDevice);
+	config->setAddress(foundDevice);
 }

@@ -23,7 +23,7 @@ bool HushDiscovery::probeDevice(const std::string& gapName, BtAddress address) {
 }
 
 void HushDiscovery::onDiscoveryCompleted(ButtplugConfig* config, BtAddress foundDevice) {
-	config->setHushAddress(foundDevice);
+	config->setAddress(foundDevice);
 	config->setHushType(_discoveredHushDeviceType);
 }
 

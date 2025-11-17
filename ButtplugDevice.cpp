@@ -21,7 +21,7 @@ std::string UuidToString(wclGattUuid uuid) {
 	return line;
 }
 
-ButtplugDevice::ButtplugDevice(ButtplugConfig& config, BtAddress deviceAddress) : _config(config), _effectiveVibrationPercent(0), _connectRetryAt(0), _deviceName(), _batteryLevel(0), _currentDeviceVibration(0), _status(BP_DISCONNECTED) {
+ButtplugDevice::ButtplugDevice(ButtplugConfig& config, BtAddress deviceAddress) : _config(config), _effectiveVibrationPercent(0), _connectRetryAt(0), _deviceName(), _batteryLevel(0), _currentDeviceVibration(0), _status(BT_DISCONNECTED) {
 	_config.getVibration(&_smallRumbleIntensity, &_bigRumbleIntensity);
 
 	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &ButtplugDevice::wclGattClientConnect);
@@ -85,7 +85,7 @@ void ButtplugDevice::connect() {
 	if (Res != WCL_E_SUCCESS)
 		error("Get working radio failed");
 
-	_status = BP_CONNECTING;
+	_status = BT_CONNECTING;
 	Res = _wclGattClient.Connect(Radio);
 	if (Res != WCL_E_SUCCESS) {
 		debug("GATT Connect error: %02X", Res);
@@ -95,17 +95,17 @@ void ButtplugDevice::connect() {
 
 void ButtplugDevice::disconnect() {
 	_wclGattClient.Disconnect();
-	_status = BP_DISCONNECTED;
+	_status = BT_DISCONNECTED;
 }
 
 bool ButtplugDevice::isConnected() {
-	if (_status == BP_DISCONNECTED)
+	if (_status == BT_DISCONNECTED)
 		connect();
-	return _status == BP_CONNECTED;
+	return _status == BT_CONNECTED;
 }
 
 int ButtplugDevice::getBatteryLevel() const {
-	if (_status != BP_CONNECTED)
+	if (_status != BT_CONNECTED)
 		return 0;
 	return _batteryLevel;
 }
@@ -134,7 +134,7 @@ void ButtplugDevice::wclGattClientConnect(void* Sender, const int Error) {
 	if (Error == WCL_E_SUCCESS) {
 		_deviceName = getGapName();
 		onConnectionEstablished();
-		_status = BP_CONNECTED;
+		_status = BT_CONNECTED;
 		return;
 	} else if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
 		debug("BTLE device not found.\n");
@@ -146,7 +146,7 @@ void ButtplugDevice::wclGattClientConnect(void* Sender, const int Error) {
 
 void ButtplugDevice::wclGattClientDisconnect(void* Sender, const int Reason) {
 	debug("Device disconnected, reason = 0x%X\n", Reason);
-	_status = BP_DISCONNECTED;
+	_status = BT_DISCONNECTED;
 }
 
 void ButtplugDevice::wclGattClientCharacteristicChanged(void* Sender, const unsigned short Handle,
