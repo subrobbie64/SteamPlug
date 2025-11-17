@@ -337,7 +337,10 @@ void SteamPlugMain::printPlugBatteryLevel(unsigned char plugBatteryLevel) {
     else if (plugBatteryLevel <= PLUG_BATTERY_LEVEL_LOW)
         col = YELLOW;
 
-	printBar(col, LINE_PLUG_BATTERY, DEVICE_NAME " bat:", plugBatteryLevel);
+    if (plugBatteryLevel & 0x80)
+        printXy(0, LINE_PLUG_BATTERY, GREEN, " -Wired- ");
+    else
+	    printBar(col, LINE_PLUG_BATTERY, DEVICE_NAME " bat:", plugBatteryLevel);
 }
 
 void SteamPlugMain::printPadBatteryLevel(unsigned char batteryLevel) {
