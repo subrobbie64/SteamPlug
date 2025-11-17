@@ -27,21 +27,20 @@ void HismithDevice::onClientCharacteristicChanged(const unsigned char* const Val
 }
 
 unsigned short HismithDevice::getDeviceModelId() {
-	unsigned char* deviceBuffer;
+	unsigned char* deviceBuffer = NULL;
 	unsigned long length = 2;
 	int Res;
+	unsigned short modelId = 0;
 	if ((Res = _wclGattClient.ReadCharacteristicValue(_infoCharac, goNone, deviceBuffer, length)) == WCL_E_SUCCESS) {
 		if (deviceBuffer) {
-			if (length == 2) {
-				free(deviceBuffer);
-				return (deviceBuffer[0] << 8) | deviceBuffer[1];
-			}
+			if (length == 2)
+				modelId = (deviceBuffer[0] << 8) | deviceBuffer[1];
 			free(deviceBuffer);
 		} else
 			log("Reading returned no buffer\n");
 	} else
 		log("Error 0x%X reading model characteristic\n", Res);
-	return 0;
+	return modelId;
 }
 
 void HismithDevice::onConnectionEstablished() {
