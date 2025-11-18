@@ -21,7 +21,7 @@ std::string UuidToString(wclGattUuid uuid) {
 	return line;
 }
 
-ButtplugDevice::ButtplugDevice(ButtplugConfig& config, BtAddress deviceAddress) : _config(config), _effectiveVibrationPercent(0), _connectRetryAt(0), _deviceName(), _batteryLevel(0), _currentDeviceVibration(0), _status(BT_DISCONNECTED) {
+ButtplugDevice::ButtplugDevice(ButtplugConfig& config) : _config(config), _effectiveVibrationPercent(0), _connectRetryAt(0), _deviceName(), _batteryLevel(0), _status(BT_DISCONNECTED) {
 	_config.getVibration(&_smallRumbleIntensity, &_bigRumbleIntensity);
 
 	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &ButtplugDevice::wclGattClientConnect);
@@ -33,7 +33,7 @@ ButtplugDevice::ButtplugDevice(ButtplugConfig& config, BtAddress deviceAddress) 
 	if (res != WCL_E_SUCCESS)
 		error("Error opening Bluetooth manager: 0x%X", res);
 
-	_wclGattClient.Address = deviceAddress;
+	_wclGattClient.Address = config.getAddress();
 	_wclGattClient.ConnectOnRead = true;
 	_wclGattClient.ForceNotifications = false;
 }
@@ -53,8 +53,11 @@ void ButtplugDevice::adjustVibration(int bySmallRumble, int byBigRumble) {
 }
 
 void ButtplugDevice::setVibrate(unsigned char smallRumble, unsigned char bigRumble) {
-	_effectiveVibrationPercent = std::clamp(((smallRumble * _smallRumbleIntensity + bigRumble * _bigRumbleIntensity) * 100) / (100 * 255), 0, 100);
-	setVibrate(_effectiveVibrationPercent);
+	unsigned char newVibSetting = std::clamp(((smallRumble * _smallRumbleIntensity + bigRumble * _bigRumbleIntensity) * 100) / (100 * 255), 0, 100);
+	if (_effectiveVibrationPercent != newVibSetting) {
+		_effectiveVibrationPercent = newVibSetting;
+		setVibrate(_effectiveVibrationPercent);
+	}
 }
 
 void ButtplugDevice::getVibrate(int* smallRumble, int* bigRumble) const {
@@ -71,25 +74,22 @@ const std::string& ButtplugDevice::getDeviceName() const {
 }
 
 void ButtplugDevice::connect() {
-	if (_connectRetryAt > System::GetMicros()) {
-		debug("connect(): Waiting for retry delay\n");
-		return;
-	}
+	if (_connectRetryAt <= System::GetMicros()) {
+		_connectRetryAt = System::GetMicros() + CONNECT_RETRY_MS * 1000;
+		_effectiveVibrationPercent = 0;
 
-	_connectRetryAt = System::GetMicros() + CONNECT_RETRY_MS * 1000;
-	_currentDeviceVibration = 0;
+		debug("Trying to connect to Buttplug device...\n");
+		CwclBluetoothRadio* Radio;
+		int Res = _wclBluetoothManager.GetLeRadio(Radio);
+		if (Res != WCL_E_SUCCESS)
+			error("Get working radio failed");
 
-	debug("Trying to connect to Buttplug device...\n");
-	CwclBluetoothRadio* Radio;
-	int Res = _wclBluetoothManager.GetLeRadio(Radio);
-	if (Res != WCL_E_SUCCESS)
-		error("Get working radio failed");
-
-	_status = BT_CONNECTING;
-	Res = _wclGattClient.Connect(Radio);
-	if (Res != WCL_E_SUCCESS) {
-		debug("GATT Connect error: %02X", Res);
-		disconnect();
+		_status = BT_CONNECTING;
+		Res = _wclGattClient.Connect(Radio);
+		if (Res != WCL_E_SUCCESS) {
+			debug("GATT Connect error: %02X", Res);
+			disconnect();
+		}
 	}
 }
 
@@ -135,13 +135,13 @@ void ButtplugDevice::wclGattClientConnect(void* Sender, const int Error) {
 		_deviceName = getGapName();
 		onConnectionEstablished();
 		_status = BT_CONNECTED;
-		return;
-	} else if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
-		debug("BTLE device not found.\n");
-	else
-		debug("Connection failed with error 0x%X\n", Error);
-
-	disconnect();
+	} else {
+		if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
+			debug("BTLE device not found.\n");
+		else
+			debug("Connection failed with error 0x%X\n", Error);
+		disconnect();
+	}
 }
 
 void ButtplugDevice::wclGattClientDisconnect(void* Sender, const int Reason) {

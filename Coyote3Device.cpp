@@ -9,7 +9,7 @@
 #define CHECK_BATTERY_INTERVAL 15000000 // 15 seconds
 
 CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
-	: ButtplugDevice(config, config.getAddress()), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
+	: ButtplugDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
 
 	_rumbleEvent = System::CreateEventFlag();
 	
@@ -51,7 +51,7 @@ void CoyoteDevice::onConnectionEstablished() {
 		_strengthSerial = 0;
 		_expectedSerial = 0xFF;
 		_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
-		_levelA = _levelB = _currentDeviceVibration = 0;
+		_levelA = _levelB = 0;
 
 		const int maxLimit = _config.enableCoyote200() ? 200 : 100;
 		sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
@@ -128,10 +128,7 @@ void CoyoteDevice::getConfigVibrate(int* levelA, int* levelB) {
 }
 
 void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
-	if (_currentDeviceVibration || (_currentDeviceVibration != effectiveVibrationPercent)) {
-		_currentDeviceVibration = effectiveVibrationPercent;
-		System::SetEvent(_rumbleEvent);
-	}
+	System::SetEvent(_rumbleEvent);
 }
 
 void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity) {
@@ -173,9 +170,9 @@ void CoyoteDevice::streamThread() {
 			ChannelWaveform* bChWaveform = (ChannelWaveform*)(commandBuf + 12);
 			for (int i = 0; i < 4; i++) {
 				aChWaveform->frequency[i] = 10; // encodeFrequency(100);
-				aChWaveform->intensity[i] = (_levelA * _currentDeviceVibration) / 100;
+				aChWaveform->intensity[i] = (_levelA * _effectiveVibrationPercent) / 100;
 				bChWaveform->frequency[i] = 10;
-				bChWaveform->intensity[i] = (_levelB * _currentDeviceVibration) / 100;
+				bChWaveform->intensity[i] = (_levelB * _effectiveVibrationPercent) / 100;
 			}
 			_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse); System::SetEvent(_rumbleEvent);
 
@@ -194,7 +191,7 @@ void CoyoteDevice::streamThread() {
 				_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL;
 			}
 
-			if (_currentDeviceVibration == 0)
+			if (_effectiveVibrationPercent == 0)
 				System::WaitEvent(_rumbleEvent);
 		}
 		System::Sleep(100);

@@ -21,7 +21,6 @@ private:
 	wclGattService _infoService, _txService, _rxService;
 	wclGattCharacteristic _infoCharac, _txCharac, _rxCharac;
 
-	int _vibration;
 	unsigned short _deviceId;
 
 	static const std::map<unsigned short, const char*> TYPE_MAP;

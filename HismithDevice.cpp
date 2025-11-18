@@ -2,10 +2,7 @@
 #include "ButtplugConfig.h"
 #include <algorithm>
 
-HismithDevice::HismithDevice(ButtplugConfig& config)
-	: ButtplugDevice(config, config.getAddress()), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac(), _deviceId(0) {
-
-	_vibration = 0;
+HismithDevice::HismithDevice(ButtplugConfig& config) : ButtplugDevice(config), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac(), _deviceId(0) {
 	_batteryLevel = 128;
 }
 
@@ -82,10 +79,8 @@ void HismithDevice::onConnectionEstablished() {
 }
 
 void HismithDevice::setVibrate(unsigned char effectiveVibrationPercent) {
-	if (isConnected() && (_vibration != effectiveVibrationPercent)) {
-		_vibration = effectiveVibrationPercent;
+	if (isConnected())
 		setFuckMachineSpeed(std::clamp((int)effectiveVibrationPercent, 0, 100));
-	}
 }
 
 const std::map<unsigned short, const char*> HismithDevice::TYPE_MAP = {

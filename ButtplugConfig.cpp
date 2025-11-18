@@ -11,14 +11,6 @@ ButtplugConfig::ButtplugConfig()
 	: _address(0), _type(-1), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
 }
 
-/*ButtplugConfig::ButtplugConfig(BtAddress hushAddress, BtAddress coyoteAddress, int type)
-	: _address(hushAddress), _type(type), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
-}*/
-
-ButtplugConfig::ButtplugConfig(BtAddress deviceAddress, int type, int vibrateLeft, int vibrateRight, BtAddress coyoteAddress, bool enable200, int channelA, int channelB) 
-	: _address(deviceAddress), _type(type), _vibrateLeft(vibrateLeft), _vibrateRight(vibrateRight), _enableCoyote200(enable200), _channelA(channelA), _channelB(channelB) {
-}
-
 BtAddress ButtplugConfig::getAddress() const {
 	return _address;
 }
@@ -121,7 +113,7 @@ ButtplugConfig *ButtplugConfig::fromFile() {
 				config->setChannelB(atoi(line + 4));
 			else if (strncmp(line, "TYPE=", 5) == 0)
 				config->setHushType(atoi(line + 5));
-			else if (strncmp(line, "ENABLE_LEVEL_200=", 17) == 0)
+			else if (strncmp(line, "ENABLE_COYOTE_200=", 17) == 0)
 				config->setEnableCoyote200(atoi(line + 17) != 0);
 		}
 		fclose(file);
@@ -139,7 +131,7 @@ void ButtplugConfig::getConfigFilename(char* buffer) {
 		sep = fullPath;
 		
 	strcpy(buffer, sep);
-	char *suffix = strchr(buffer, '.');
+	char *suffix = strrchr(buffer, '.');
 	if (suffix)
 		strcpy(suffix, ".cfg");
 	else

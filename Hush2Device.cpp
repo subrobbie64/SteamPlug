@@ -4,7 +4,7 @@
 
 #define CHECK_BATTERY_INTERVAL 15000000 // 15 seconds
 
-HushDevice::HushDevice(ButtplugConfig& config) : ButtplugDevice(config, config.getAddress()), _buttplugService(), _rxCharac(), _txCharac(), _deviceId(), _readBatteryAt(0) {
+HushDevice::HushDevice(ButtplugConfig& config) : ButtplugDevice(config), _buttplugService(), _rxCharac(), _txCharac(), _deviceId(), _readBatteryAt(0) {
 	System::CreateSema(&_runningCommand, 1);
 }
 
@@ -74,13 +74,10 @@ void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value,
 }
 
 void HushDevice::setVibrate(unsigned char effectiveVibrationPercent) {
-	if (isConnected() && (_currentDeviceVibration != effectiveVibrationPercent)) {
-		_currentDeviceVibration = effectiveVibrationPercent;
-		char commandBuffer[16];
-		int vibrateSetting = std::clamp((effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
-		sprintf(commandBuffer, "Vibrate:%d;", vibrateSetting);
-		issueCommand(commandBuffer);
-	}
+	char commandBuffer[16];
+	int vibrateSetting = std::clamp((effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
+	sprintf(commandBuffer, "Vibrate:%d;", vibrateSetting);
+	issueCommand(commandBuffer);
 }
 
 const std::string& HushDevice::getDeviceId() const {

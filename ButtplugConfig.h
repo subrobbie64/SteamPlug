@@ -4,8 +4,6 @@ typedef unsigned long long BtAddress;
 
 class ButtplugConfig {
 public:
-	//ButtplugConfig(BtAddress hushAddress, BtAddress coyoteAddress, int type);
-
 	BtAddress getAddress() const;
 	void setAddress(BtAddress address);
 	
@@ -25,11 +23,9 @@ public:
 
 	void toFile() const;
 	static ButtplugConfig* fromFile();
-
-	static void getConfigFilename(char* buffer);
 private:
 	ButtplugConfig();
-	ButtplugConfig(BtAddress hushAddress, int type, int vibrateLeft, int vibrateRight, BtAddress coyoteAddress, bool enable200, int channelA, int channelB);
+	static void getConfigFilename(char* buffer);
 
 	BtAddress _address;
 	int _type;

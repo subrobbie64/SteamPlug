@@ -13,7 +13,7 @@ std::string UuidToString(wclGattUuid uuid);
 
 class ButtplugDevice {
 public:
-	ButtplugDevice(ButtplugConfig& config, BtAddress deviceAddress);
+	ButtplugDevice(ButtplugConfig& config);
 	virtual ~ButtplugDevice();
 	void connect();
 	bool isConnected();
@@ -40,8 +40,8 @@ protected:
 	CwclBluetoothManager _wclBluetoothManager;
 	CwclGattClient _wclGattClient;
 
-	int _currentDeviceVibration;
 	int _batteryLevel;
+	unsigned char _effectiveVibrationPercent;
 
 	ButtplugConfig& _config;
 	std::string _deviceName;
@@ -55,7 +55,6 @@ private:
 
 	unsigned long long _connectRetryAt;
 	int _smallRumbleIntensity, _bigRumbleIntensity;
-	unsigned char _effectiveVibrationPercent;
 
 	static const wclGattUuid GENERIC_ACCESS_SERVICE_UUID, DEVICE_NAME_CHARAC_UUID;
 };
