@@ -11,16 +11,13 @@ public:
 	void setHushType(int type);
 
 	bool enableCoyote200() const;
-	void setEnableCoyote200(bool enable);
 	
 	void getVibration(int* vibrateLeft, int* vibrateRight) const;
 	void setVibration(int vibrateLeft, int vibrateRight);
 
 	void getChannels(int* channelA, int* channelB) const;
 	void setChannels(int channelA, int channelB);
-	void setChannelA(int channelA);
-	void setChannelB(int channelB);
-
+	
 	void toFile() const;
 	static ButtplugConfig* fromFile();
 private:

@@ -31,10 +31,6 @@ bool ButtplugConfig::enableCoyote200() const {
 	return _enableCoyote200;
 }
 
-void ButtplugConfig::setEnableCoyote200(bool enable) {
-	_enableCoyote200 = enable;
-}
-
 void ButtplugConfig::getChannels(int* channelA, int* channelB) const {
 	*channelA = _channelA;
 	*channelB = _channelB;
@@ -42,14 +38,6 @@ void ButtplugConfig::getChannels(int* channelA, int* channelB) const {
 
 void ButtplugConfig::setChannels(int channelA, int channelB) {
 	_channelA = channelA;
-	_channelB = channelB;
-}
-
-void ButtplugConfig::setChannelA(int channelA) {
-	_channelA = channelA;
-}
-
-void ButtplugConfig::setChannelB(int channelB) {
 	_channelB = channelB;
 }
 
@@ -108,13 +96,13 @@ ButtplugConfig *ButtplugConfig::fromFile() {
 			else if (strncmp(line, "R=", 2) == 0)
 				config->_vibrateRight = atoi(line + 2);
 			else if (strncmp(line, "CHA=", 4) == 0)
-				config->setChannelA(atoi(line + 4));
+				config->_channelA = atoi(line + 4);
 			else if (strncmp(line, "CHB=", 4) == 0)
-				config->setChannelB(atoi(line + 4));
+				config->_channelB = atoi(line + 4);
 			else if (strncmp(line, "TYPE=", 5) == 0)
 				config->setHushType(atoi(line + 5));
 			else if (strncmp(line, "ENABLE_COYOTE_200=", 17) == 0)
-				config->setEnableCoyote200(atoi(line + 17) != 0);
+				config->_enableCoyote200 = (atoi(line + 17) != 0);
 		}
 		fclose(file);
 	}

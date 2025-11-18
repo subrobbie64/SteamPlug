@@ -4,7 +4,6 @@
 
 #pragma comment(lib, "ViGEmClient.lib")
 
-#define OOT_HACK
 #ifdef OOT_HACK
 class EffectThread {
 public:
