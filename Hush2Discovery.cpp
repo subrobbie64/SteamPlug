@@ -13,11 +13,9 @@ bool HushDiscovery::probeDevice(const std::string& gapName, BtAddress address) {
 	wclGattServices FServices;
 	int Res = _wclGattClient.ReadServices(goNone, FServices);
 	if (Res == WCL_E_SUCCESS) {
-		const int detectionResult = getHushDeviceType(FServices);
-		if (detectionResult >= 0) {
-			_discoveredHushDeviceType = detectionResult;
+		_discoveredHushDeviceType = getHushDeviceType(FServices);
+		if (_discoveredHushDeviceType >= 0)
 			return true;
-		}
 	}
 	return false;
 }
@@ -35,3 +33,6 @@ int HushDiscovery::getHushDeviceType(wclGattServices& services) {
 	return -1;
 }
 
+void HushDiscovery::storeAdditionalAttributes(ButtplugConfig* config) {
+	config->setHushType(_discoveredHushDeviceType);
+}

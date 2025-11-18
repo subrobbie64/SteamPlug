@@ -30,3 +30,6 @@ bool CoyoteDiscovery::probeDevice(const std::string& gapName, BtAddress address)
 		log(" - error 0x%X reading services.", Res);
 	return false;
 }
+
+void CoyoteDiscovery::storeAdditionalAttributes(ButtplugConfig* config) {
+}

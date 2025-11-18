@@ -10,5 +10,6 @@ public:
 
 protected:
 	virtual bool probeDevice(const std::string& gapName, BtAddress address) override;
+	virtual void storeAdditionalAttributes(ButtplugConfig* config) override;
 };
 

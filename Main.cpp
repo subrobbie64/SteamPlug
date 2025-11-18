@@ -96,7 +96,7 @@ void SteamPlugMain::openButtplugDevice() {
     _buttplugConfig = ButtplugConfig::fromFile();
 	ButtplugDiscovery* deviceDiscovery = NULL;
 #ifdef USE_HUSH2
-    if (!_buttplugConfig->getAddress()) {
+    if (!_buttplugConfig->getAddress() || (_buttplugConfig->getHushType() < 0) || (_buttplugConfig->getHushType() >= HushDevice::NUM_HUSH_DEVICES)) {
         log("No Hush2 Buttplug address found in config, running Discovery!\n");
         deviceDiscovery = new HushDiscovery();
     }

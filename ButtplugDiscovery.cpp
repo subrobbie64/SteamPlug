@@ -69,6 +69,7 @@ bool ButtplugDiscovery::runDiscovery(ButtplugConfig* config) {
 		error("No %s devices found.\n", _deviceName.c_str());
 
 	config->setAddress(_discoveredIntendedDevice);
+	storeAdditionalAttributes(config);
 
 	return true;
 }
