@@ -11,13 +11,13 @@ public:
 	virtual void setVibrate(unsigned char effectiveVibrationPercent);
 protected:
 	virtual void onConnectionEstablished();
+	virtual void onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length);
 
 private:
 	void runCommand(unsigned char command, unsigned char value);
 	void setFuckMachineSpeed(int speed);
 	unsigned short getDeviceModelId();
 
-	virtual void onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length);
 	wclGattService _infoService, _txService, _rxService;
 	wclGattCharacteristic _infoCharac, _txCharac, _rxCharac;
 

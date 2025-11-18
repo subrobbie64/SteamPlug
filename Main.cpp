@@ -130,6 +130,7 @@ void SteamPlugMain::openButtplugDevice() {
     _coyoteDevice = new CoyoteDevice(*_buttplugConfig);
     _buttplugDevice = _coyoteDevice;
 #else
+    log("Trying to connect Hismith at %s...", Mac2String(_buttplugConfig->getAddress()).c_str());
     _buttplugDevice = new HismithDevice(*_buttplugConfig);
 #endif
     _buttplugDevice->connect();
@@ -342,7 +343,8 @@ void SteamPlugMain::printPlugBatteryLevel(unsigned char plugBatteryLevel) {
 
 void SteamPlugMain::printPadBatteryLevel(unsigned char batteryLevel) {
     if (batteryLevel == 0xFF) {
-		printXy(1, LINE_PHYSPAD_BATTERY, GREEN, "Pad bat:  Wired");
+		printXy(1, LINE_PHYSPAD_BATTERY, GREEN, "Pad bat:");
+        printXy(0, LINE_PHYSPAD_BATTERY, GREEN, " -Wired- ");
     } else {
         const bool charging = batteryLevel & 0x80;
         batteryLevel &= 0x7F;

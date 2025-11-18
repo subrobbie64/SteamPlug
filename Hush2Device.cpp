@@ -83,12 +83,6 @@ void HushDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	}
 }
 
-bool HushDevice::readBatteryLevel() {
-	if (!isConnected())
-		return false;
-	return issueCommand("Battery;");
-}
-
 const std::string& HushDevice::getDeviceId() const {
 	return _deviceId;
 }

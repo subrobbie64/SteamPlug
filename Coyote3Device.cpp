@@ -8,8 +8,6 @@
 
 #define CHECK_BATTERY_INTERVAL 15000000 // 15 seconds
 
-std::string Mac2String(BtAddress Address);
-
 CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	: ButtplugDevice(config, config.getAddress()), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
 

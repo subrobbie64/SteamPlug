@@ -25,8 +25,6 @@ public:
 	int getEffectiveVibration() const;
 
 	int getBatteryLevel() const;
-
-	int _smallRumbleIntensity, _bigRumbleIntensity;
 protected:
 	enum Status {
 		BT_DISCONNECTED,
@@ -56,6 +54,7 @@ private:
 		const unsigned char* const Value, const unsigned long Length);
 
 	unsigned long long _connectRetryAt;
+	int _smallRumbleIntensity, _bigRumbleIntensity;
 	unsigned char _effectiveVibrationPercent;
 
 	static const wclGattUuid GENERIC_ACCESS_SERVICE_UUID, DEVICE_NAME_CHARAC_UUID;

@@ -11,13 +11,6 @@ HismithDiscovery::~HismithDiscovery() {
 bool HismithDiscovery::isHismithDevice(BtAddress address, wclGattServices& services) {
 	bool infoFound = false, txFound = false, rxFound = false;
 	for (wclGattService& service : services) {
-		// log("\nService: %s\n", UuidToString(service.Uuid).c_str());
-
-		// wclGattCharacteristics characteristics;
-		// _wclGattClient.ReadCharacteristics(service, goNone, characteristics);
-		// for (wclGattCharacteristic& chara : characteristics)
-			// log("  Characteristic: %s\n", UuidToString(chara.Uuid).c_str());
-
 		if (service.Uuid.ShortUuid == HismithDevice::INFO_SERVICE_UUID.ShortUuid)
 			infoFound = true;
 		else if (service.Uuid.ShortUuid == HismithDevice::TX_SERVICE_UUID.ShortUuid)

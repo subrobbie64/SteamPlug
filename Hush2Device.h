@@ -13,7 +13,6 @@ public:
 	virtual ~HushDevice();
 
 	virtual void setVibrate(unsigned char effectiveVibrationPercent);
-	bool readBatteryLevel();
 
 	const std::string& getDeviceId() const;
 
