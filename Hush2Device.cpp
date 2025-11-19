@@ -13,6 +13,8 @@ HushDevice::~HushDevice() {
 }
 
 void HushDevice::onConnectionEstablished() {
+	ButtplugDevice::onConnectionEstablished();
+
 	const ButtplugDeviceDefinition*  buttplugDefinition = &HUSH_DEVICE[_config.getHushType()];
 	int Res;
 	if ((Res = _wclGattClient.FindService(buttplugDefinition->serviceId, _buttplugService)) != WCL_E_SUCCESS)
@@ -48,7 +50,6 @@ bool HushDevice::issueCommand(const char* commandString) {
 }
 
 void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
-
 	System::SignalSema(&_runningCommand);
 
 	std::string response((const char*)Value, Length);

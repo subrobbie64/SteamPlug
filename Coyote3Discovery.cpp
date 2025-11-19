@@ -3,7 +3,7 @@
 
 #pragma warning(disable: 4244)
 
-CoyoteDiscovery::CoyoteDiscovery() : ButtplugDiscovery("DG-Labs Coyote 3.0") {
+CoyoteDiscovery::CoyoteDiscovery() : BluetoothDiscovery("DG-Labs Coyote 3.0") {
 }
 
 CoyoteDiscovery::~CoyoteDiscovery() {

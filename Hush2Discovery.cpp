@@ -3,7 +3,7 @@
 #include "Hush2Device.h"
 #pragma warning(disable: 4244)
 
-HushDiscovery::HushDiscovery() : ButtplugDiscovery("Hush2 Buttplug"), _discoveredHushDeviceType(0) {
+HushDiscovery::HushDiscovery() : BluetoothDiscovery("Hush2 Buttplug"), _discoveredHushDeviceType(-1) {
 }
 
 HushDiscovery::~HushDiscovery() {

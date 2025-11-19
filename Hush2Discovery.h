@@ -1,10 +1,9 @@
 #pragma once
-#include "ButtplugDevice.h"
-#include "ButtplugDiscovery.h"
+#include "BluetoothDiscovery.h"
 
 using namespace wclBluetooth;
 
-class HushDiscovery : public ButtplugDiscovery {
+class HushDiscovery : public BluetoothDiscovery {
 public:
 	HushDiscovery();
 	~HushDiscovery();

@@ -45,6 +45,8 @@ unsigned short HismithDevice::getDeviceModelId() {
 }
 
 void HismithDevice::onConnectionEstablished() {
+	ButtplugDevice::onConnectionEstablished();
+
 	int Res;
 	if ((Res = _wclGattClient.FindService(INFO_SERVICE_UUID, _infoService)) != WCL_E_SUCCESS)
 		log("FindService failed 0x%X!\n", Res);

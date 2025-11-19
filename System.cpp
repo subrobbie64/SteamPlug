@@ -28,80 +28,82 @@ void log(const char* str, ...) {
 	fflush(stderr);
 }
 
-void getTerminalSize(int* columns, int* rows) {
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
+namespace Terminal {
+	void getTerminalSize(int* columns, int* rows) {
+		CONSOLE_SCREEN_BUFFER_INFO csbi;
 
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-	*columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-	*rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
-}
-
-void setTerminalCursorVisibility(BOOL visible) {
-	HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-	CONSOLE_CURSOR_INFO info;
-	if (GetConsoleCursorInfo(consoleHandle, &info) == 0)
-		info.dwSize = 25;
-	info.bVisible = visible;
-	SetConsoleCursorInfo(consoleHandle, &info);
-}
-
-void getTerminalCursorPosition(int* x, int* y) {
-	*x = *y = 0;
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
-		*x = csbi.dwCursorPosition.X;
-		*y = csbi.dwCursorPosition.Y;
+		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+		*columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+		*rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 	}
-}
 
-void printXy(int x, int y, Color color, const char* str, ...) {
-	char buffer[8192];
-	va_list args;
-	va_start(args, str);
-
-	char* pos = buffer;
-	if (x > 0)
-		pos += sprintf(pos, "\033[%d;%dH", y, x);
-	if (color != NONE)
-		pos += sprintf(pos, "\x1B[%02Xm", color);
-	int strLen = vsnprintf(pos, 8192 - 20, str, args);
-	pos += strLen;
-	if (color != NONE)
-		pos += sprintf(pos, "\033[0m");
-	va_end(args);
-	if ((x <= 0) || (y <= 0)) {
-		int w, h;
-		getTerminalSize(&w, &h);
-		if (x == 0)
-			x = (w - strLen) / 2 + 1;
-		else
-			x = w - strLen + 1;
-		if (y <= 0)
-			y = h / 2 + 1;
-		printf("\033[%d;%dH", y, x);
+	void setTerminalCursorVisibility(BOOL visible) {
+		HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+		CONSOLE_CURSOR_INFO info;
+		if (GetConsoleCursorInfo(consoleHandle, &info) == 0)
+			info.dwSize = 25;
+		info.bVisible = visible;
+		SetConsoleCursorInfo(consoleHandle, &info);
 	}
-	printf("%s", buffer);
-}
 
-bool enableVirtualTerminalMode() {
-	// Set output mode to handle virtual terminal sequences
-	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (hOut == INVALID_HANDLE_VALUE)
-		return false;
+	void getTerminalCursorPosition(int* x, int* y) {
+		*x = *y = 0;
+		CONSOLE_SCREEN_BUFFER_INFO csbi;
+		if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+			*x = csbi.dwCursorPosition.X;
+			*y = csbi.dwCursorPosition.Y;
+		}
+	}
 
-	DWORD dwMode = 0;
-	if (!GetConsoleMode(hOut, &dwMode))
-		return false;
+	void printXy(int x, int y, Color color, const char* str, ...) {
+		char buffer[8192];
+		va_list args;
+		va_start(args, str);
 
-	dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-	if (!SetConsoleMode(hOut, dwMode))
-		return false;
+		char* pos = buffer;
+		if (x > 0)
+			pos += sprintf(pos, "\033[%d;%dH", y, x);
+		if (color != NONE)
+			pos += sprintf(pos, "\x1B[%02Xm", color);
+		int strLen = vsnprintf(pos, 8192 - 20, str, args);
+		pos += strLen;
+		if (color != NONE)
+			pos += sprintf(pos, "\033[0m");
+		va_end(args);
+		if ((x <= 0) || (y <= 0)) {
+			int w, h;
+			getTerminalSize(&w, &h);
+			if (x == 0)
+				x = (w - strLen) / 2 + 1;
+			else
+				x = w - strLen + 1;
+			if (y <= 0)
+				y = h / 2 + 1;
+			printf("\033[%d;%dH", y, x);
+		}
+		printf("%s", buffer);
+	}
 
-	return true;
-}
+	bool enableVirtualTerminalMode() {
+		// Set output mode to handle virtual terminal sequences
+		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+		if (hOut == INVALID_HANDLE_VALUE)
+			return false;
 
-void clearScreen() {
-	printf("\033[2J");
+		DWORD dwMode = 0;
+		if (!GetConsoleMode(hOut, &dwMode))
+			return false;
+
+		dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+		if (!SetConsoleMode(hOut, dwMode))
+			return false;
+
+		return true;
+	}
+
+	void clearScreen() {
+		printf("\033[2J");
+	}
 }
 
 namespace System {

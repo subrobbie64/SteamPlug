@@ -2,7 +2,7 @@
 #include "ButtplugConfig.h"
 #include "HismithDevice.h"
 
-HismithDiscovery::HismithDiscovery() : ButtplugDiscovery("Hismith fuck machine") {
+HismithDiscovery::HismithDiscovery() : BluetoothDiscovery("Hismith fuck machine") {
 }
 
 HismithDiscovery::~HismithDiscovery() {

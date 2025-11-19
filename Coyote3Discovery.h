@@ -1,9 +1,9 @@
 #pragma once
-#include "ButtplugDiscovery.h"
+#include "BluetoothDiscovery.h"
 
 using namespace wclBluetooth;
 
-class CoyoteDiscovery : public ButtplugDiscovery {
+class CoyoteDiscovery : public BluetoothDiscovery {
 public:
 	CoyoteDiscovery();
 	~CoyoteDiscovery();

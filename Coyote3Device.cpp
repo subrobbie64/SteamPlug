@@ -32,6 +32,8 @@ CoyoteDevice::~CoyoteDevice() {
 }
 
 void CoyoteDevice::onConnectionEstablished() {
+	ButtplugDevice::onConnectionEstablished();
+
 	int Res;
 	if ((Res = _wclGattClient.FindService(SERVICE_UUID, _coyoteService)) != WCL_E_SUCCESS)
 		error("FindService failed 0x%X!\n", Res);

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ButtplugConfig.h"
-#include "ButtplugDevice.h"
+#include "BluetoothDevice.h"
 #include "System.h"
 
 #define BUTTPLUG_WEIGHT_LEFT (13 * 5)

@@ -1,0 +1,22 @@
+#pragma once
+
+#include <wclBluetooth.h>
+#include "ButtplugConfig.h"
+
+using namespace wclBluetooth;
+
+typedef unsigned long long BtAddress;
+
+class BluetoothBase {
+public:
+	BluetoothBase();
+	virtual ~BluetoothBase();
+
+	static std::string Mac2String(BtAddress Address);
+	static std::string UuidToString(wclGattUuid uuid);
+protected:
+	CwclBluetoothRadio* getRadio();
+	std::string getDeviceName(BtAddress address);
+
+	CwclBluetoothManager _wclBluetoothManager;
+};

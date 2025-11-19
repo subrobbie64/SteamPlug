@@ -1,60 +1,23 @@
 #pragma once
+#include "BluetoothDevice.h"
 
-#include <wclBluetooth.h>
-#include "System.h"
-#include "ButtplugConfig.h"
-
-using namespace wclBluetooth;
-
-typedef unsigned long long BtAddress;
-
-std::string Mac2String(BtAddress Address);
-std::string UuidToString(wclGattUuid uuid);
-
-class ButtplugDevice {
+class ButtplugDevice : public BluetoothDevice {
 public:
 	ButtplugDevice(ButtplugConfig& config);
 	virtual ~ButtplugDevice();
-	void connect();
-	bool isConnected();
-	const std::string& getDeviceName() const;
-
 	void adjustVibration(int bySmallRumble, int byBigRumble);
 	void getVibrate(int* smallRumble, int* bigRumble) const;
 	void setVibrate(unsigned char smallRumble, unsigned char bigRumble);
 	int getEffectiveVibration() const;
-
 	int getBatteryLevel() const;
-protected:
-	enum Status {
-		BT_DISCONNECTED,
-		BT_CONNECTING,
-		BT_CONNECTED
-	};
-	void disconnect();
 
-	virtual void onConnectionEstablished() = 0;
-	virtual void onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) = 0;
+protected:
 	virtual void setVibrate(unsigned char effectiveVibration) = 0;
-	
-	CwclBluetoothManager _wclBluetoothManager;
-	CwclGattClient _wclGattClient;
+	virtual void onConnectionEstablished();
 
 	int _batteryLevel;
 	unsigned char _effectiveVibrationPercent;
 
-	ButtplugConfig& _config;
-	std::string _deviceName;
-	Status _status;
 private:
-	std::string getGapName();
-	void wclGattClientConnect(void* Sender, const int Error);
-	void wclGattClientDisconnect(void* Sender, const int Reason);
-	void wclGattClientCharacteristicChanged(void* Sender, const unsigned short Handle,
-		const unsigned char* const Value, const unsigned long Length);
-
-	unsigned long long _connectRetryAt;
 	int _smallRumbleIntensity, _bigRumbleIntensity;
-
-	static const wclGattUuid GENERIC_ACCESS_SERVICE_UUID, DEVICE_NAME_CHARAC_UUID;
 };

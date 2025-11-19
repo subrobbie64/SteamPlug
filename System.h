@@ -30,12 +30,14 @@ void log(const char* str, ...);
 #define debug(a, ...) void(0)
 #endif
 
-void clearScreen();
-void getTerminalSize(int* columns, int* rows);
-void setTerminalCursorVisibility(BOOL visible);
-void getTerminalCursorPosition(int* x, int* y);
-void printXy(int x, int y, Color color, const char* str, ...);
-bool enableVirtualTerminalMode();
+namespace Terminal {
+	void clearScreen();
+	void getTerminalSize(int* columns, int* rows);
+	void setTerminalCursorVisibility(BOOL visible);
+	void getTerminalCursorPosition(int* x, int* y);
+	void printXy(int x, int y, Color color, const char* str, ...);
+	bool enableVirtualTerminalMode();
+}
 
 namespace System {
 
