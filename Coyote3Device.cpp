@@ -6,7 +6,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma warning(disable:6001)
 
-#define CHECK_BATTERY_INTERVAL 15000000 // 15 seconds
+#define CHECK_BATTERY_INTERVAL 30000000 // 30 seconds
 
 CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	: ButtplugDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
@@ -52,12 +52,7 @@ void CoyoteDevice::onConnectionEstablished() {
 
 		const int maxLimit = _config.enableCoyote200() ? 200 : 100;
 		sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
-
-		return; // Success
 	}
-
-	_wclGattClient.Disconnect();
-	_status = BT_DISCONNECTED;
 }
 
 void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
@@ -72,12 +67,8 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 		} else
 			printf("Unexpected serial: %02X, expected %02X\n", Value[1], _expectedSerial);
 		_expectedSerial = 0xFF;
-	} else {
-		printf(" => UNKNOWN. RECV: ");
-		for (unsigned long i = 0; i < Length; i++)
-			printf("%02X ", Value[i]);
-		printf("\n");
-	}
+	} else
+		printf(" => UNKNOWN. RECV: %s\n", hexString(Value, Length).c_str());
 }
 
 void CoyoteDevice::adjustChannelIntensity(int levelA, int levelB) {
@@ -118,7 +109,7 @@ enum SetChannelStrenthMethod {
 	SCSM_NO_CHANGE = 0,
 	SCSM_INCREASE = 1,
 	SCSM_DECREASE = 2,
-	SCSM_ABSOLUTE = 3,
+	SCSM_ABSOLUTE = 3
 };
 
 unsigned char encodeFrequency(unsigned short frequency) {
@@ -174,10 +165,10 @@ void CoyoteDevice::streamThread() {
 				unsigned long length;
 				if (_wclGattClient.ReadCharacteristicValue(_batteryCharac, goNone, batteryBuffer, length) == WCL_E_SUCCESS) {
 					if (batteryBuffer) {
-						if (length == 1) {
+						if (length == 1)
 							_batteryLevel = batteryBuffer[0];
-						} else
-							log("Unexpected response to read battery: %d bytes\n", length);
+						else
+							log("Unexpected response to read battery: %s\n", hexString(batteryBuffer, length).c_str());
 						free(batteryBuffer);
 					}
 				}

@@ -21,10 +21,10 @@ BluetoothDevice::BluetoothDevice(ButtplugConfig& config) : _config(config), _con
 }
 
 BluetoothDevice::~BluetoothDevice() {
+	_wclBluetoothManager.Close();
 	__unhook(&CwclGattClient::OnConnect, &_wclGattClient, &BluetoothDevice::wclGattClientConnect);
 	__unhook(&CwclGattClient::OnDisconnect, &_wclGattClient, &BluetoothDevice::wclGattClientDisconnect);
 	__unhook(&CwclGattClient::OnCharacteristicChanged, &_wclGattClient, &BluetoothDevice::wclGattClientCharacteristicChanged);
-	_wclBluetoothManager.Close();
 }
 
 const std::string& BluetoothDevice::getDeviceName() const {

@@ -26,11 +26,26 @@ std::string BluetoothBase::getDeviceName(BtAddress address) {
 		return "Unknown Device";
 }
 
-std::string BluetoothBase::Mac2String(BtAddress Address) {
+std::string BluetoothBase::MacToString(BtAddress Address) {
 	char macAddress[32];
 	sprintf(macAddress, "%02X:%02X:%02X:%02X:%02X:%02X", ((unsigned char*)&Address)[5], ((unsigned char*)&Address)[4], ((unsigned char*)&Address)[3], ((unsigned char*)&Address)[2], ((unsigned char*)&Address)[1], ((unsigned char*)&Address)[0]);
 	return std::string(macAddress);
 }
+
+BtAddress BluetoothBase::MacFromString(const char* str) {
+	if ((str[2] != ':') || (str[5] != ':') || (str[8] != ':') || (str[11] != ':') || (str[14] != ':'))
+		return 0;
+
+	BtAddress address = 0;
+	((unsigned char*)&address)[5] = (unsigned char)strtoul(str + 0, NULL, 16);
+	((unsigned char*)&address)[4] = (unsigned char)strtoul(str + 3, NULL, 16);
+	((unsigned char*)&address)[3] = (unsigned char)strtoul(str + 6, NULL, 16);
+	((unsigned char*)&address)[2] = (unsigned char)strtoul(str + 9, NULL, 16);
+	((unsigned char*)&address)[1] = (unsigned char)strtoul(str + 12, NULL, 16);
+	((unsigned char*)&address)[0] = (unsigned char)strtoul(str + 15, NULL, 16);
+	return address;
+}
+
 
 std::string BluetoothBase::UuidToString(wclGattUuid uuid) {
 	char line[128];

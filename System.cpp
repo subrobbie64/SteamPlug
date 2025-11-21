@@ -28,6 +28,16 @@ void log(const char* str, ...) {
 	fflush(stderr);
 }
 
+std::string hexString(const unsigned char* data, unsigned long length) {
+	std::string result;
+	char buf[4];
+	for (unsigned long i = 0; i < length; i++) {
+		sprintf(buf, "%02X ", data[i]);
+		result += buf;
+	}
+	return result;
+}
+
 namespace Terminal {
 	void getTerminalSize(int* columns, int* rows) {
 		CONSOLE_SCREEN_BUFFER_INFO csbi;

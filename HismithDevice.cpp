@@ -4,7 +4,7 @@
 #include <algorithm>
 
 HismithDevice::HismithDevice(ButtplugConfig& config) : ButtplugDevice(config), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac(), _deviceId(0) {
-	_batteryLevel = 128;
+	_batteryLevel = BUTTPLUG_WIRED;
 }
 
 HismithDevice::~HismithDevice() {

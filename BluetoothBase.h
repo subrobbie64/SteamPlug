@@ -11,7 +11,8 @@ public:
 	BluetoothBase();
 	virtual ~BluetoothBase();
 
-	static std::string Mac2String(BtAddress Address);
+	static std::string MacToString(BtAddress Address);
+	static BtAddress MacFromString(const char* str);
 	static std::string UuidToString(wclGattUuid uuid);
 protected:
 	CwclBluetoothRadio* getRadio();

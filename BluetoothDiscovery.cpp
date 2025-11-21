@@ -33,7 +33,7 @@ void BluetoothDiscovery::wclBluetoothManagerDiscoveringStarted(void* Sender, Cwc
 }
 
 void BluetoothDiscovery::wclBluetoothManagerDeviceFound(void* Sender, CwclBluetoothRadio* const Radio, const __int64 Address) {
-	const std::string macAddressStr = Mac2String(Address);
+	const std::string macAddressStr = MacToString(Address);
 	wclBluetoothDeviceType DevType = dtMixed;
 	const int Res = Radio->GetRemoteDeviceType(Address, DevType);
 	if (Res != WCL_E_SUCCESS)
@@ -60,6 +60,7 @@ bool BluetoothDiscovery::runDiscovery(ButtplugConfig* config) {
 
 	config->setAddress(_discoveredIntendedDevice);
 	storeAdditionalAttributes(config);
+	config->toFile();
 
 	return true;
 }
@@ -95,7 +96,7 @@ void BluetoothDiscovery::inspectNextDevice() {
 
 void BluetoothDiscovery::wclGattClientConnect(void* Sender, const int Error) {
 	const BtAddress Address = ((CwclGattClient*)Sender)->Address;
-	log("Examining device %s", Mac2String(Address).c_str());
+	log("Examining device %s", MacToString(Address).c_str());
 
 	std::string discoveredDeviceName = getDeviceName(Address);
 	wclGattServices btServices;

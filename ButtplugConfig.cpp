@@ -65,8 +65,7 @@ void ButtplugConfig::toFile() const {
 	getConfigFilename(cfgFilename);
 	FILE* outf = fopen(cfgFilename, "w");
 	if (outf) {
-		unsigned char* address = (unsigned char*)&_address;
-		fprintf(outf, "ADDRESS=%02X:%02X:%02X:%02X:%02X:%02X\n", address[5], address[4], address[3], address[2], address[1], address[0]);
+		fprintf(outf, "ADDRESS=%s\n", BluetoothBase::MacToString(_address).c_str());
 		fprintf(outf, "TYPE=%d\n", _type);
 		fprintf(outf, "L=%d\nR=%d\n", _vibrateLeft, _vibrateRight);
 		fprintf(outf, "ENABLE_COYOTE_200=%d\n", _enableCoyote200 ? 1 : 0);
@@ -74,20 +73,6 @@ void ButtplugConfig::toFile() const {
 		fclose(outf);
 	} else
 		log("Unable to write config file \"%s\"\n", cfgFilename);
-}
-
-BtAddress getBtAddressFromString(const char* str) {
-	if ((str[2] != ':') || (str[5] != ':') || (str[8] != ':') || (str[11] != ':') || (str[14] != ':'))
-		return 0;
-
-	BtAddress address = 0;
-	((unsigned char*)&address)[5] = (unsigned char)strtoul(str + 0, NULL, 16);
-	((unsigned char*)&address)[4] = (unsigned char)strtoul(str + 3, NULL, 16);
-	((unsigned char*)&address)[3] = (unsigned char)strtoul(str + 6, NULL, 16);
-	((unsigned char*)&address)[2] = (unsigned char)strtoul(str + 9, NULL, 16);
-	((unsigned char*)&address)[1] = (unsigned char)strtoul(str + 12, NULL, 16);
-	((unsigned char*)&address)[0] = (unsigned char)strtoul(str + 15, NULL, 16);
-	return address;
 }
 
 ButtplugConfig *ButtplugConfig::fromFile() {
@@ -99,7 +84,7 @@ ButtplugConfig *ButtplugConfig::fromFile() {
 		char line[256];
 		while (fgets(line, sizeof(line), file)) {
 			if (strncmp(line, "ADDRESS=", 8) == 0)
-				config->setAddress(getBtAddressFromString(line + 8));
+				config->setAddress(BluetoothBase::MacFromString(line + 8));
 			else if (strncmp(line, "L=", 2) == 0)
 				config->_vibrateLeft = atoi(line + 2);
 			else if (strncmp(line, "R=", 2) == 0)

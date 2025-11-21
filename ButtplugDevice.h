@@ -1,6 +1,8 @@
 #pragma once
 #include "BluetoothDevice.h"
 
+#define BUTTPLUG_WIRED 128
+
 class ButtplugDevice : public BluetoothDevice {
 public:
 	ButtplugDevice(ButtplugConfig& config);
@@ -13,7 +15,6 @@ public:
 
 protected:
 	virtual void setVibrate(unsigned char effectiveVibration) = 0;
-	virtual void onConnectionEstablished() = 0;
 
 	int _batteryLevel;
 	unsigned char _effectiveVibrationPercent;

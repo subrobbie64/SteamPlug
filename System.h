@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Windows.h>
+#include <string>
+
 typedef void* systhread_t;
 typedef HANDLE syssema_t;
 typedef unsigned int threadReturn;
@@ -24,6 +26,7 @@ enum Color {
 
 void __declspec(noreturn) error(const char* str, ...);
 void log(const char* str, ...);
+std::string hexString(const unsigned char* data, unsigned long length);
 #ifdef _DEBUG
 #define debug log
 #else
