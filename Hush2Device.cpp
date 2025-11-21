@@ -13,8 +13,6 @@ HushDevice::~HushDevice() {
 }
 
 void HushDevice::onConnectionEstablished() {
-	ButtplugDevice::onConnectionEstablished();
-
 	const ButtplugDeviceDefinition*  buttplugDefinition = &HUSH_DEVICE[_config.getHushType()];
 	int Res;
 	if ((Res = _wclGattClient.FindService(buttplugDefinition->serviceId, _buttplugService)) != WCL_E_SUCCESS)
@@ -77,6 +75,7 @@ void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value,
 void HushDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	char commandBuffer[16];
 	int vibrateSetting = std::clamp((effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
+	_effectiveVibrationPercent = vibrateSetting;
 	sprintf(commandBuffer, "Vibrate:%d;", vibrateSetting);
 	issueCommand(commandBuffer);
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "ButtplugDevice.h"
+#include "System.h"
 
 struct ButtplugDeviceDefinition {
 	wclGattUuid serviceId;

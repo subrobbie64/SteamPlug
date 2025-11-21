@@ -1,7 +1,6 @@
 #pragma once
 
 #include <wclBluetooth.h>
-#include "ButtplugConfig.h"
 
 using namespace wclBluetooth;
 

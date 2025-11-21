@@ -16,10 +16,7 @@ CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	_strengthSerial = 0;
 	_expectedSerial = 0xFF;
 	_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
-	int chA, chB;
-	config.getChannels(&chA, &chB);
-	_levelA = chA;
-	_levelB = chB;
+	config.getChannels((unsigned char *)&_levelA, (unsigned char *)&_levelB);
 	_readBatteryAt = 0;
 
 	_stopThread = false;
@@ -32,8 +29,6 @@ CoyoteDevice::~CoyoteDevice() {
 }
 
 void CoyoteDevice::onConnectionEstablished() {
-	ButtplugDevice::onConnectionEstablished();
-
 	int Res;
 	if ((Res = _wclGattClient.FindService(SERVICE_UUID, _coyoteService)) != WCL_E_SUCCESS)
 		error("FindService failed 0x%X!\n", Res);
@@ -66,7 +61,6 @@ void CoyoteDevice::onConnectionEstablished() {
 }
 
 void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
-
 	if ((Length == 6) && (Value[0] == 0x53)) { // Device ID & lighting configuration after connect, i.e. 53 00 93 3B 2D 05
 		_status = BT_CONNECTED;
 	} else if ((Length == 4) && (Value[0] == 0x51)) { // Battery status, i.e. 51 00 10 64
@@ -75,10 +69,8 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 		if (_expectedSerial == Value[1]) {
 			_confirmedChannelStrength[0] = Value[2];
 			_confirmedChannelStrength[1] = Value[3];
-		} else {
+		} else
 			printf("Unexpected serial: %02X, expected %02X\n", Value[1], _expectedSerial);
-			_strengthSerial = 0;
-		}
 		_expectedSerial = 0xFF;
 	} else {
 		printf(" => UNKNOWN. RECV: ");
@@ -86,6 +78,40 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 			printf("%02X ", Value[i]);
 		printf("\n");
 	}
+}
+
+void CoyoteDevice::adjustChannelIntensity(int levelA, int levelB) {
+	const int maxIntensity = _config.enableCoyote200() ? 200 : 100;
+	_config.getChannels((unsigned char*)&_levelA, (unsigned char*)&_levelB);
+	_levelA = (unsigned char)std::clamp(_levelA + levelA, 0, maxIntensity);
+	_levelB = (unsigned char)std::clamp(_levelB + levelB, 0, maxIntensity);
+	_config.setChannels(_levelA, _levelB);
+	_config.toFile();
+}
+
+void CoyoteDevice::getConfigVibrate(int* levelA, int* levelB) {
+	*levelA = _levelA;
+	*levelB = _levelB;
+}
+
+void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
+	_effectiveVibrationPercent = effectiveVibrationPercent;
+	System::SetEvent(_rumbleEvent);
+}
+
+void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity) {
+	unsigned char commandBuf[7];
+	commandBuf[0] = 0xBF;
+	// Channel limits 0~200
+	commandBuf[1] = aChLimit;
+	commandBuf[2] = bChLimit;
+	// 0~255, the larger the value, the stronger the impact of the lower frequencies
+	commandBuf[3] = aChFreqBalance;
+	commandBuf[4] = bChFreqBalance;
+	// 0~255, the pulse width. the larger the value, the stronger the impact of the lower frequencies
+	commandBuf[5] = aChFreqIntensity;
+	commandBuf[6] = bChFreqIntensity;
+	_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 7, plNone, wkWithoutResponse);
 }
 
 enum SetChannelStrenthMethod {
@@ -111,42 +137,6 @@ struct ChannelWaveform { // 4x 25ms
 	unsigned char frequency[4]; // 0 ~ 240
 	unsigned char intensity[4]; // 0 ~ 100
 };
-
-void CoyoteDevice::adjustChannelIntensity(int levelA, int levelB) {
-	const int maxIntensity = _config.enableCoyote200() ? 200 : 100;
-	int a, b;
-	_config.getChannels(&a, &b);
-	a += levelA;
-	b += levelB;
-	_levelA = (unsigned char)std::clamp(a, 0, maxIntensity);
-	_levelB = (unsigned char)std::clamp(b, 0, maxIntensity);
-	_config.setChannels(_levelA, _levelB);
-	_config.toFile();
-}
-
-void CoyoteDevice::getConfigVibrate(int* levelA, int* levelB) {
-	*levelA = _levelA;
-	*levelB = _levelB;
-}
-
-void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
-	System::SetEvent(_rumbleEvent);
-}
-
-void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity) {
-	unsigned char commandBuf[7];
-	commandBuf[0] = 0xBF;
-	// Channel limits 0~200
-	commandBuf[1] = aChLimit;
-	commandBuf[2] = bChLimit;
-	// 0~255, the larger the value, the stronger the impact of the lower frequencies
-	commandBuf[3] = aChFreqBalance;
-	commandBuf[4] = bChFreqBalance;
-	// 0~255, the pulse width. the larger the value, the stronger the impact of the lower frequencies
-	commandBuf[5] = aChFreqIntensity;
-	commandBuf[6] = bChFreqIntensity;
-	_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 7, plNone, wkWithoutResponse);
-}
 
 void CoyoteDevice::streamThread() {
 	while (!_stopThread) {
@@ -176,7 +166,8 @@ void CoyoteDevice::streamThread() {
 				bChWaveform->frequency[i] = 10;
 				bChWaveform->intensity[i] = (_levelB * _effectiveVibrationPercent) / 100;
 			}
-			_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse); System::SetEvent(_rumbleEvent);
+			_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse);
+			System::SetEvent(_rumbleEvent);
 
 			if (_readBatteryAt < System::GetMicros()) {
 				unsigned char* batteryBuffer;

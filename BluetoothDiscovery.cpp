@@ -1,4 +1,5 @@
 #include "BluetoothDiscovery.h"
+#include "ButtplugConfig.h"
 
 BluetoothDiscovery::BluetoothDiscovery(const std::string& deviceName) : _deviceName(deviceName), _discoveredIntendedDevice(0) {
 	_discoveryCompletedEvent = System::CreateEventFlag();
@@ -97,21 +98,19 @@ void BluetoothDiscovery::wclGattClientConnect(void* Sender, const int Error) {
 	log("Examining device %s", Mac2String(Address).c_str());
 
 	std::string discoveredDeviceName = getDeviceName(Address);
-	if (probeDevice(discoveredDeviceName, Address)) {
-		log(" - \x1B[%02Xmlooks like a %s\x1B[%02Xm!\n", GREEN, _deviceName.c_str(), WHITE);
-		_discoveredIntendedDevice = Address;
-		int Res = _wclGattClient.Disconnect();
-		if (Res != WCL_E_SUCCESS)
-			log(" - error 0x%X disconnecting.", Res);
+	wclGattServices btServices;
+	int Res = _wclGattClient.ReadServices(goNone, btServices);
+	if (Res == WCL_E_SUCCESS) {
+		if (probeDevice(Address, discoveredDeviceName, btServices)) {
+			log(" - \x1B[%02Xmlooks like a %s\x1B[%02Xm!", GREEN, _deviceName.c_str(), WHITE);
+			_discoveredIntendedDevice = Address;
+		}
 		log("\n");
-		System::SetEvent(_discoveryCompletedEvent);
-		return;
-	}
-
-	int Res = _wclGattClient.Disconnect();
+	} else
+		log(" - error 0x%X reading services.\n", Res);
+	Res = _wclGattClient.Disconnect();
 	if (Res != WCL_E_SUCCESS)
-		log(" - error 0x%X disconnecting.", Res);
-	log("\n");
+		log(" - error 0x%X disconnecting.\n", Res);
 }
 
 void BluetoothDiscovery::wclGattClientDisconnect(void* Sender, const int Reason) {

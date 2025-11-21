@@ -1,4 +1,5 @@
 #include "BluetoothDevice.h"
+#include "System.h"
 
 #pragma comment(lib, "WclBluetoothFramework.lib")
 #pragma comment(lib, "Ws2_32.lib")

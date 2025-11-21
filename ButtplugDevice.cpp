@@ -37,7 +37,3 @@ int ButtplugDevice::getBatteryLevel() const {
 		return 0;
 	return _batteryLevel;
 }
-
-void ButtplugDevice::onConnectionEstablished() {
-	_effectiveVibrationPercent = 0;
-}

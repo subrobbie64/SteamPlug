@@ -1,5 +1,6 @@
 #include "HismithDevice.h"
 #include "ButtplugConfig.h"
+#include "System.h"
 #include <algorithm>
 
 HismithDevice::HismithDevice(ButtplugConfig& config) : ButtplugDevice(config), _infoService(), _infoCharac(), _txService(), _rxService(), _rxCharac(), _txCharac(), _deviceId(0) {
@@ -45,8 +46,6 @@ unsigned short HismithDevice::getDeviceModelId() {
 }
 
 void HismithDevice::onConnectionEstablished() {
-	ButtplugDevice::onConnectionEstablished();
-
 	int Res;
 	if ((Res = _wclGattClient.FindService(INFO_SERVICE_UUID, _infoService)) != WCL_E_SUCCESS)
 		log("FindService failed 0x%X!\n", Res);
@@ -81,8 +80,10 @@ void HismithDevice::onConnectionEstablished() {
 }
 
 void HismithDevice::setVibrate(unsigned char effectiveVibrationPercent) {
-	if (isConnected())
-		setFuckMachineSpeed(std::clamp((int)effectiveVibrationPercent, 0, 100));
+	if (!isConnected())
+		return;
+	_effectiveVibrationPercent = effectiveVibrationPercent;
+	setFuckMachineSpeed(std::clamp((int)effectiveVibrationPercent, 0, 100));
 }
 
 const std::map<unsigned short, const char*> HismithDevice::TYPE_MAP = {

@@ -13,7 +13,7 @@ public:
 
 protected:
 	virtual void setVibrate(unsigned char effectiveVibration) = 0;
-	virtual void onConnectionEstablished();
+	virtual void onConnectionEstablished() = 0;
 
 	int _batteryLevel;
 	unsigned char _effectiveVibrationPercent;

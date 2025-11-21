@@ -2,6 +2,7 @@
 #include <string.h>
 #include "ButtplugConfig.h"
 #include "BluetoothDevice.h"
+#include "Hush2Device.h"
 #include "System.h"
 
 #define BUTTPLUG_WEIGHT_LEFT (13 * 5)
@@ -27,11 +28,19 @@ void ButtplugConfig::setHushType(int type) {
 	_type = type;
 }
 
+bool ButtplugConfig::isValid() const {
+#ifdef USE_HUSH2
+	if ((_type < 0) || (_type >= HushDevice::NUM_HUSH_DEVICES))
+		return false;
+#endif
+	return _address != 0;
+}
+
 bool ButtplugConfig::enableCoyote200() const {
 	return _enableCoyote200;
 }
 
-void ButtplugConfig::getChannels(int* channelA, int* channelB) const {
+void ButtplugConfig::getChannels(unsigned char* channelA, unsigned char* channelB) const {
 	*channelA = _channelA;
 	*channelB = _channelB;
 }

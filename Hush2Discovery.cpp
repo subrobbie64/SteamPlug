@@ -9,28 +9,18 @@ HushDiscovery::HushDiscovery() : BluetoothDiscovery("Hush2 Buttplug"), _discover
 HushDiscovery::~HushDiscovery() {
 }
 
-bool HushDiscovery::probeDevice(const std::string& gapName, BtAddress address) {
-	wclGattServices FServices;
-	int Res = _wclGattClient.ReadServices(goNone, FServices);
-	if (Res == WCL_E_SUCCESS) {
-		_discoveredHushDeviceType = getHushDeviceType(FServices);
-		if (_discoveredHushDeviceType >= 0)
-			return true;
-	}
-	return false;
-}
-
-int HushDiscovery::getHushDeviceType(wclGattServices& services) {
-	for (wclGattService& service : services) {
+bool HushDiscovery::probeDevice(BtAddress address, const std::string& gapName, wclGattServices& btServices) {
+	for (wclGattService& service : btServices) {
 		if (service.Uuid.IsShortUuid)
 			continue;
 
-		for (int j = 0; j < HushDevice::NUM_HUSH_DEVICES; j++) {
-			if (!memcmp(&service.Uuid.LongUuid, &HushDevice::HUSH_DEVICE[j].serviceId.LongUuid, sizeof(GUID)))
-				return j;
-		}
+		for (int j = 0; j < HushDevice::NUM_HUSH_DEVICES; j++)
+			if (!memcmp(&service.Uuid.LongUuid, &HushDevice::HUSH_DEVICE[j].serviceId.LongUuid, sizeof(GUID))) {
+				_discoveredHushDeviceType = j;
+				return true;
+			}
 	}
-	return -1;
+	return false;
 }
 
 void HushDiscovery::storeAdditionalAttributes(ButtplugConfig* config) {

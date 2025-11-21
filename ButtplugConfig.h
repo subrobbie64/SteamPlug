@@ -10,12 +10,14 @@ public:
 	int getHushType() const;
 	void setHushType(int type);
 
+	bool isValid() const;
+
 	bool enableCoyote200() const;
 	
 	void getVibration(int* vibrateLeft, int* vibrateRight) const;
 	void setVibration(int vibrateLeft, int vibrateRight);
 
-	void getChannels(int* channelA, int* channelB) const;
+	void getChannels(unsigned char* channelA, unsigned char* channelB) const;
 	void setChannels(int channelA, int channelB);
 	
 	void toFile() const;
