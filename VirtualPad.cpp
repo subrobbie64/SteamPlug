@@ -73,7 +73,7 @@ VirtualPad::VirtualPad(ButtplugDevice& buttplugDevice)
 		error("Virtual controller plug-in failed: 0x%X", retval);
 	debug("okay!\n");
 
-	retval = vigem_target_x360_register_notification(_client, _outputPad, &rumbleCallbackFn, this);
+	retval = vigem_target_x360_register_notification(_client, _outputPad, &VirtualPad::rumbleCallbackFn, this);
 	if (!VIGEM_SUCCESS(retval))
 		error("Registering for notification failed with error code: 0x%X", retval);
 
