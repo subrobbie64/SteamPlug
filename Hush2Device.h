@@ -26,6 +26,8 @@ protected:
 
 private:
 	bool issueCommand(const char* commandString);
+	static threadReturn WINAPI retryHandlerFunc(void* arg);
+	void retryHandler();
 
 	wclGattService _buttplugService;
 	wclGattCharacteristic _txCharac, _rxCharac;

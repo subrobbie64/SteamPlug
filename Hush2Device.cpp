@@ -34,17 +34,28 @@ void HushDevice::onConnectionEstablished() {
 }
 
 bool HushDevice::issueCommand(const char* commandString) {
-	if (System::WaitSema(&_runningCommand, 1000) != SEMA_TIMEOUT) {
-		const int Res = _wclGattClient.WriteCharacteristicValue(_txCharac, (const unsigned char*)commandString, (unsigned int)strlen(commandString), plNone, wkWithoutResponse);
-		if (Res == WCL_E_SUCCESS)
-			return true;
-		debug("WriteCharacteristicValue error 0x%X\n", Res);
-	} else
-		debug("Timeout waiting for previous command to complete\n");
+	if (System::WaitSema(&_runningCommand, 1000) == SEMA_TIMEOUT)
+		log("WARN: Timeout waiting for previous command to complete\n");
+	const int Res = _wclGattClient.WriteCharacteristicValue(_txCharac, (const unsigned char*)commandString, (unsigned int)strlen(commandString), plNone, wkWithoutResponse);
+	if (Res == WCL_E_SUCCESS)
+		return true;
+	log("WriteCharacteristicValue error 0x%X\n", Res);
 
 	disconnect();
 	System::SignalSema(&_runningCommand);
 	return false;
+}
+
+threadReturn WINAPI HushDevice::retryHandlerFunc(void* arg) {
+	((HushDevice*)arg)->retryHandler();
+	return THREAD_RETURN;
+}
+
+void HushDevice::retryHandler() {
+	System::Sleep(50);
+	char commandBuffer[16];
+	sprintf(commandBuffer, "Vibrate:%d;", _effectiveVibrationPercent);
+	issueCommand(commandBuffer);
 }
 
 void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
@@ -68,8 +79,12 @@ void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value,
 			issueCommand("Battery;");
 			_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL;
 		}
+	} else if (response[0] == 's') {
+		debug("BP sent error %s\n", response.c_str());
+		systhread_t thread = System::CreateThread(&HushDevice::retryHandlerFunc, this);
+		System::CloseThread(thread);
 	} else
-		debug("Unknown BP response! (Length = %d): %s\n", Length, response.c_str());
+		log("Unknown BP response! (Length = %d): %s\n", Length, response.c_str());
 }
 
 void HushDevice::setVibrate(unsigned char effectiveVibrationPercent) {
