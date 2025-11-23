@@ -9,7 +9,7 @@
 class XBoxPad : public PhysicalPad {
 public:
     XBoxPad(DWORD physicalPadId);
-    ~XBoxPad();
+    virtual ~XBoxPad();
 
     DWORD getPadId();
 
@@ -23,6 +23,5 @@ public:
 private:
     DWORD _physicalPadId;
 
-    XINPUT_STATE _padState;
     bool _deviceError;
 };

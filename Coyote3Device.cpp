@@ -6,8 +6,6 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma warning(disable:6001)
 
-#define CHECK_BATTERY_INTERVAL 30000000 // 30 seconds
-
 CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
 	: ButtplugDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
 
@@ -78,11 +76,6 @@ void CoyoteDevice::adjustChannelIntensity(int levelA, int levelB) {
 	_levelB = (unsigned char)std::clamp(_levelB + levelB, 0, maxIntensity);
 	_config.setChannels(_levelA, _levelB);
 	_config.toFile();
-}
-
-void CoyoteDevice::getConfigVibrate(int* levelA, int* levelB) {
-	*levelA = _levelA;
-	*levelB = _levelB;
 }
 
 void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
@@ -172,7 +165,7 @@ void CoyoteDevice::streamThread() {
 						free(batteryBuffer);
 					}
 				}
-				_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL;
+				_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
 			}
 
 			if (_effectiveVibrationPercent == 0)
@@ -186,6 +179,8 @@ threadReturn WINAPI CoyoteDevice::streamThreadFunc(void* arg) {
 	((CoyoteDevice*)arg)->streamThread();
 	return THREAD_RETURN;
 }
+
+const int CoyoteDevice::CHECK_BATTERY_INTERVAL_MILLIS = 30 * 1000; // 30 seconds
 
 const std::string CoyoteDevice::DEVICE_NAME = "47L121000";
 

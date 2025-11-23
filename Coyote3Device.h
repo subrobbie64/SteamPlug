@@ -12,7 +12,6 @@ public:
 	virtual ~CoyoteDevice();
 	
 	void adjustChannelIntensity(int levelA, int levelB);
-	void getConfigVibrate(int* levelA, int* levelB);
 	virtual void setVibrate(unsigned char effectiveVibrationPercent);
 
 protected:
@@ -39,7 +38,7 @@ private:
 
 	unsigned long long _readBatteryAt;
 
-	static const int MAX_VIBRATION_SETTING;
+	static const int CHECK_BATTERY_INTERVAL_MILLIS;
 public:
 	static const std::string DEVICE_NAME;
 

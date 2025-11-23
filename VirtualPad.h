@@ -4,23 +4,13 @@
 #include "ButtplugConfig.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <Xinput.h>
 #include <ViGEm/Client.h>
 #include "System.h"
+#include "PhysicalPad.h" 
 
 #define BATTERY_WIRED 0xFF
 #define BATTERY_CHARGING 0x80
 #define BATTERY_MAX 100
-
-class PhysicalPad {
-public:
-	virtual bool getState(XUSB_REPORT* padReport) = 0;
-	virtual unsigned char getBatteryState() = 0;
-	virtual void updatePadRumble(UCHAR LargeMotor, UCHAR SmallMotor) = 0;
-
-	virtual bool isError() const = 0;
-private:
-};
 
 class VirtualPad {
 public:
@@ -33,7 +23,6 @@ public:
 	bool isPhysicalPadError();
 
 	void updateState();
-	void getAnalogSticksAsByte(UCHAR* left, UCHAR* right) const;
 	
 	bool getRumbleState(int* commandCount, int* statusLarge, int* statusSmall) const;
 	void setRumble(UCHAR LargeMotor, UCHAR SmallMotor);

@@ -2,8 +2,6 @@
 #include "ButtplugConfig.h"
 #include <algorithm>
 
-#define CHECK_BATTERY_INTERVAL 15000000 // 15 seconds
-
 HushDevice::HushDevice(ButtplugConfig& config) : ButtplugDevice(config), _buttplugService(), _rxCharac(), _txCharac(), _deviceId(), _readBatteryAt(0) {
 	System::CreateSema(&_runningCommand, 1);
 }
@@ -13,7 +11,7 @@ HushDevice::~HushDevice() {
 }
 
 void HushDevice::onConnectionEstablished() {
-	const ButtplugDeviceDefinition*  buttplugDefinition = &HUSH_DEVICE[_config.getHushType()];
+	const ButtplugDeviceDefinition* buttplugDefinition = &HUSH_DEVICE[_config.getHushType()];
 	int Res;
 	if ((Res = _wclGattClient.FindService(buttplugDefinition->serviceId, _buttplugService)) != WCL_E_SUCCESS)
 		debug("FindService failed 0x%X!\n", Res);
@@ -39,23 +37,11 @@ bool HushDevice::issueCommand(const char* commandString) {
 	const int Res = _wclGattClient.WriteCharacteristicValue(_txCharac, (const unsigned char*)commandString, (unsigned int)strlen(commandString), plNone, wkWithoutResponse);
 	if (Res == WCL_E_SUCCESS)
 		return true;
-	log("WriteCharacteristicValue error 0x%X\n", Res);
 
+	log("WriteCharacteristicValue error 0x%X\n", Res);
 	disconnect();
 	System::SignalSema(&_runningCommand);
 	return false;
-}
-
-threadReturn WINAPI HushDevice::retryHandlerFunc(void* arg) {
-	((HushDevice*)arg)->retryHandler();
-	return THREAD_RETURN;
-}
-
-void HushDevice::retryHandler() {
-	System::Sleep(50);
-	char commandBuffer[16];
-	sprintf(commandBuffer, "Vibrate:%d;", _effectiveVibrationPercent);
-	issueCommand(commandBuffer);
 }
 
 void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
@@ -69,15 +55,13 @@ void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value,
 		issueCommand("Battery;");
 	} else if (isdigit(response[0]) && (Length <= 4)) {
 		_batteryLevel = std::stoi(response);
-		if (_status == BT_CONNECTING) {
-			_status = BT_CONNECTED;
-		}
+		_status = BT_CONNECTED;
 	} else if (response.compare("POWEROFF;") == 0) {
 		disconnect();
 	} else if (response.compare("OK;") == 0) {
 		if (_readBatteryAt < System::GetMicros()) {
 			issueCommand("Battery;");
-			_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL;
+			_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
 		}
 	} else if (response[0] == 's') {
 		debug("BP sent error %s\n", response.c_str());
@@ -89,15 +73,31 @@ void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value,
 
 void HushDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	char commandBuffer[16];
-	int vibrateSetting = std::clamp((effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
-	_effectiveVibrationPercent = vibrateSetting;
-	sprintf(commandBuffer, "Vibrate:%d;", vibrateSetting);
+	_effectiveVibrationPercent = effectiveVibrationPercent;
+	int hushVibrateSetting = std::clamp((_effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
+	sprintf(commandBuffer, "Vibrate:%d;", hushVibrateSetting);
 	issueCommand(commandBuffer);
 }
 
 const std::string& HushDevice::getDeviceId() const {
 	return _deviceId;
 }
+
+void HushDevice::retryHandler() {
+	System::Sleep(RETRY_DELAY_MILLIS);
+	char commandBuffer[16];
+	int hushVibrateSetting = std::clamp((_effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
+	sprintf(commandBuffer, "Vibrate:%d;", hushVibrateSetting);
+	issueCommand(commandBuffer);
+}
+
+threadReturn WINAPI HushDevice::retryHandlerFunc(void* arg) {
+	((HushDevice*)arg)->retryHandler();
+	return THREAD_RETURN;
+}
+
+const int HushDevice::RETRY_DELAY_MILLIS = 50;
+const int HushDevice::CHECK_BATTERY_INTERVAL_MILLIS = 15000; // 15 seconds
 
 const int HushDevice::MAX_VIBRATION_SETTING = 20;
 

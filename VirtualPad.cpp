@@ -71,15 +71,14 @@ VirtualPad::VirtualPad(ButtplugDevice& buttplugDevice)
 	retval = vigem_target_add(_client, _outputPad);
 	if (!VIGEM_SUCCESS(retval))
 		error("Virtual controller plug-in failed: 0x%X", retval);
-	debug("okay!\n");
 
 	retval = vigem_target_x360_register_notification(_client, _outputPad, &VirtualPad::rumbleCallbackFn, this);
 	if (!VIGEM_SUCCESS(retval))
 		error("Registering for notification failed with error code: 0x%X", retval);
 
+	System::CreateSema(&_physicalPadSema, 1);
 	System::WaitEvent(_padIdAssigmentEvent);
 
-	System::CreateSema(&_physicalPadSema, 1);
 #ifdef OOT_HACK
 	g_effectThread = new EffectThread(this);
 #endif
@@ -140,20 +139,6 @@ void VirtualPad::updateState() {
 #endif
 		vigem_target_x360_update(_client, _outputPad, _padState);
 	}
-}
-
-void VirtualPad::getAnalogSticksAsByte(UCHAR* left, UCHAR* right) const {
-	int value;
-
-	value = max(abs(_padState.sThumbLX), abs(_padState.sThumbLY));
-	value -= XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE;
-	value = (value * 255) / (32767 - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-	*left = std::clamp(value, 0, 255);
-
-	value = max(abs(_padState.sThumbRX), abs(_padState.sThumbRY));
-	value -= XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE;
-	value = (value * 255) / (32767 - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
-	*right = std::clamp(value, 0, 255);
 }
 
 void VirtualPad::setRumble(UCHAR LargeMotor, UCHAR SmallMotor) {

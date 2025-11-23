@@ -1,6 +1,5 @@
 #pragma once
 
-//#include <JoyShockLibrary.h>
 #include "VirtualPad.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -17,13 +16,13 @@ public:
 		DUALSENSE  = 4
 	};
 	DualPad(unsigned short vendorId, unsigned short productId, const wchar_t *serial);
-	~DualPad();
+	virtual ~DualPad();
 
-	bool isError() const;
+	virtual bool isError() const;
 
-	bool getState(XUSB_REPORT* padReport);
-	unsigned char getBatteryState();
-	void updatePadRumble(UCHAR LargeMotor, UCHAR SmallMotor);
+	virtual bool getState(XUSB_REPORT* padReport);
+	virtual unsigned char getBatteryState();
+	virtual void updatePadRumble(UCHAR LargeMotor, UCHAR SmallMotor);
 
 	static DualPad *detectController();
 protected:
@@ -38,7 +37,6 @@ protected:
 	unsigned char _batteryState;
 	bool _deviceError;
 
-	XUSB_REPORT _padReport;
 	unsigned char _inputBuffer[HID_BUFFER_SIZE];
 
 	static const std::set<unsigned short> DUALSHOCK4_PRODUCT_IDS, DUALSENSE_PRODUCT_IDS;
@@ -47,17 +45,18 @@ protected:
 class DualShockPad : public DualPad {
 public:
 	DualShockPad(unsigned short vendorId, unsigned short productId, const wchar_t* serial);
-private:
-	void setRumbleColor(unsigned char largeRumble, unsigned char smallRumble, unsigned int color);
-	void convertPadState();
+protected:
+	virtual void setRumbleColor(unsigned char largeRumble, unsigned char smallRumble, unsigned int color);
+	virtual void convertPadState();
 };
 
 class DualSensePad : public DualPad {
 public:
 	DualSensePad(unsigned short vendorId, unsigned short productId, const wchar_t* serial);
+protected:
+	virtual void setRumbleColor(unsigned char largeRumble, unsigned char smallRumble, unsigned int color);
+	virtual void convertPadState();
 private:
-	void setRumbleColor(unsigned char largeRumble, unsigned char smallRumble, unsigned int color);
-	void convertPadState();
 	void convertPadStateUsb01();
 	void convertPadStateBluetooth01();
 

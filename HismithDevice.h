@@ -28,6 +28,6 @@ public:
 	static const wclGattUuid INFO_SERVICE_UUID;
 	static const wclGattUuid INFO_SERVICE_CHARAC_UUID;
 	static const wclGattUuid TX_SERVICE_UUID, RX_SERVICE_UUID;
-	static const wclGattUuid TX_CHARAC, RX_CHARAC;
+	static const wclGattUuid TX_CHARAC_UUID, RX_CHARAC_UUID;
 };
 

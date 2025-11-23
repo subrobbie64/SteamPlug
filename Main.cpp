@@ -59,7 +59,7 @@ private:
     PhysicalPad* openGamePad(unsigned long long* waitPadDetection, ControllerMode* mode, const VirtualPad& virtualPad, int* physicalPadIndex);
 
     void printButtplugStatus(int rumbleCommands, int rumbleLeft, int rumbleRight);
-    void printTestStatus(VirtualPad& virtualPad);
+    void printTestStatus(PhysicalPad* physicalPad, VirtualPad& virtualPad);
     void printVibrationStatus();
     void printBar(Color col, int y, const char* prefix, int value);
     void printPlugBatteryLevel(unsigned char batteryLevel);
@@ -211,7 +211,7 @@ void SteamPlugMain::run() {
         }
         
         if (testing)
-            printTestStatus(virtualPad);
+            printTestStatus(physicalPad, virtualPad);
 
         if ((cycleCount % 5) == 0) {
             if (_kbhit() || (cycleCount == 0)) {
@@ -273,9 +273,10 @@ void SteamPlugMain::printButtplugStatus(int rumbleCommands, int rumbleLeft, int 
     Terminal::printXy(1, LINE_EVENT_STATUS, GREEN, "Processing events.");
 }
 
-void SteamPlugMain::printTestStatus(VirtualPad& virtualPad) {
-    UCHAR left, right;
-    virtualPad.getAnalogSticksAsByte(&left, &right);
+void SteamPlugMain::printTestStatus(PhysicalPad* physicalPad, VirtualPad& virtualPad) {
+    UCHAR left = 0, right = 0;
+    if (physicalPad)
+        physicalPad->getAnalogSticksAsByte(&left, &right);
     virtualPad.setRumble(left, right);
     int rumblePlug = _buttplugDevice->getEffectiveVibration();
 

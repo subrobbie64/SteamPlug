@@ -26,8 +26,8 @@ protected:
 
 private:
 	bool issueCommand(const char* commandString);
-	static threadReturn WINAPI retryHandlerFunc(void* arg);
 	void retryHandler();
+	static threadReturn WINAPI retryHandlerFunc(void* arg);
 
 	wclGattService _buttplugService;
 	wclGattCharacteristic _txCharac, _rxCharac;
@@ -35,6 +35,7 @@ private:
 	syssema_t _runningCommand;
 	unsigned long long _readBatteryAt;
 
+	static const int RETRY_DELAY_MILLIS, CHECK_BATTERY_INTERVAL_MILLIS;
 	static const int MAX_VIBRATION_SETTING;
 };
 

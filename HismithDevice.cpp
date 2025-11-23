@@ -55,9 +55,9 @@ void HismithDevice::onConnectionEstablished() {
 		log("FindService RX failed 0x%X!\n", Res);
 	else if ((Res = _wclGattClient.FindCharacteristic(_infoService, INFO_SERVICE_CHARAC_UUID, _infoCharac)) != WCL_E_SUCCESS)
 		log("FindCharacteristic (INFO) Error: 0x%X", Res);
-	else if ((Res = _wclGattClient.FindCharacteristic(_txService, TX_CHARAC, _txCharac)) != WCL_E_SUCCESS)
+	else if ((Res = _wclGattClient.FindCharacteristic(_txService, TX_CHARAC_UUID, _txCharac)) != WCL_E_SUCCESS)
 		log("FindCharacteristic (TX) Error: 0x%X", Res);
-	else if ((Res = _wclGattClient.FindCharacteristic(_rxService, RX_CHARAC, _rxCharac)) != WCL_E_SUCCESS)
+	else if ((Res = _wclGattClient.FindCharacteristic(_rxService, RX_CHARAC_UUID, _rxCharac)) != WCL_E_SUCCESS)
 		log("FindCharacteristic (RX) Error: 0x%X", Res);
 	else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
 		log("Subscribe failed Error 0x%X!\n", Res);
@@ -105,7 +105,7 @@ const wclGattUuid HismithDevice::INFO_SERVICE_UUID = { true, 0xFF90, { 0x0000ff9
 const wclGattUuid HismithDevice::INFO_SERVICE_CHARAC_UUID = { true, 0xFF96, { 0x0000ff96, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
 
 const wclGattUuid HismithDevice::TX_SERVICE_UUID = { true, 0xFFE5, { 0x0000ffe5, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-const wclGattUuid HismithDevice::TX_CHARAC = { true, 0xFFE9, { 0x0000ffe9, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };;
+const wclGattUuid HismithDevice::TX_CHARAC_UUID = { true, 0xFFE9, { 0x0000ffe9, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };;
 
 const wclGattUuid HismithDevice::RX_SERVICE_UUID = { true, 0xFFE0, { 0x0000ffe0, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-const wclGattUuid HismithDevice::RX_CHARAC = { true, 0xFFE4, { 0x0000ffe4, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
+const wclGattUuid HismithDevice::RX_CHARAC_UUID = { true, 0xFFE4, { 0x0000ffe4, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };

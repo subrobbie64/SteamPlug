@@ -40,11 +40,11 @@ void BluetoothDevice::connect() {
 		CwclBluetoothRadio* Radio;
 		int Res = _wclBluetoothManager.GetLeRadio(Radio);
 		if (Res != WCL_E_SUCCESS)
-			error("Get working radio failed");
+			error("Get working radio failed: 0x%X.", Res);
 		_status = BT_CONNECTING;
 		Res = _wclGattClient.Connect(Radio);
 		if (Res != WCL_E_SUCCESS) {
-			debug("GATT Connect error: %02X", Res);
+			debug("GATT Connect error: 0x%X", Res);
 			disconnect();
 		}
 	}
@@ -62,7 +62,7 @@ bool BluetoothDevice::isConnected() {
 }
 
 void BluetoothDevice::wclGattClientConnect(void* Sender, const int Error) {
-	if (Error == WCL_E_SUCCESS) {;
+	if (Error == WCL_E_SUCCESS) {
 		onConnectionEstablished();
 		_status = BT_CONNECTED;
 	} else {

@@ -34,11 +34,10 @@ DualPad* DualPad::detectController() {
 	return resultPad;
 }
 
-DualPad::DualPad(unsigned short vendorId, unsigned short productId, const wchar_t* serial) : _padReport(), _inputBuffer(), _deviceError(false) {
+DualPad::DualPad(unsigned short vendorId, unsigned short productId, const wchar_t* serial) : _inputBuffer(), _deviceError(false) {
 	System::CreateSema(&_deviceSema, 1);
 	_isBluetooth = false;
 	_batteryState = 0; 
-	memset(&_padReport, 0, sizeof(XUSB_REPORT));
 
 	_hidDevice = hid_open(vendorId, productId, serial);
 	if (_hidDevice)
@@ -67,9 +66,9 @@ bool DualPad::getState(XUSB_REPORT* padReport) {
 			debug("No response from HID\n");
 		} else {
 			convertPadState();
+			memcpy(padReport, &_padState.Gamepad, sizeof(XUSB_REPORT));
 			result = true;
 		}
-		memcpy(padReport, &_padReport, sizeof(XUSB_REPORT));
 	}
 	System::SignalSema(&_deviceSema);
 	return result;
@@ -214,14 +213,14 @@ void DualShockPad::convertPadState() {
 	if (_isBluetooth)
 		inState = (DS4RawState*)(_inputBuffer + 3);
 
-	_padReport.wButtons = mapButtons(inState->buttonDpad, inState->moreButtons);
+	_padState.Gamepad.wButtons = mapButtons(inState->buttonDpad, inState->moreButtons);
 
-	_padReport.bLeftTrigger  = inState->leftTrigger;
-	_padReport.bRightTrigger = inState->rightTrigger;
-	_padReport.sThumbLX = translateAnalogAxis(inState->leftX);
-	_padReport.sThumbLY = translateAnalogAxis(~inState->leftY);
-	_padReport.sThumbRX = translateAnalogAxis(inState->rightX);
-	_padReport.sThumbRY = translateAnalogAxis(~inState->rightY);
+	_padState.Gamepad.bLeftTrigger  = inState->leftTrigger;
+	_padState.Gamepad.bRightTrigger = inState->rightTrigger;
+	_padState.Gamepad.sThumbLX = translateAnalogAxis(inState->leftX);
+	_padState.Gamepad.sThumbLY = translateAnalogAxis(~inState->leftY);
+	_padState.Gamepad.sThumbRX = translateAnalogAxis(inState->rightX);
+	_padState.Gamepad.sThumbRY = translateAnalogAxis(~inState->rightY);
 
 	int batteryLevel = (inState->extensionBattery & 0xF) * BATTERY_MAX;
 	if (inState->extensionBattery & 0x10) {
@@ -325,14 +324,14 @@ void DualSensePad::convertPadState() {
 void DualSensePad::convertPadStateUsb01() {
 	const DS5RawState* inState = (DS5RawState*)(_inputBuffer + 1);
 
-	_padReport.wButtons = mapButtons(inState->buttonDpad, inState->moreButtons);
+	_padState.Gamepad.wButtons = mapButtons(inState->buttonDpad, inState->moreButtons);
 
-	_padReport.bLeftTrigger = inState->leftTrigger;
-	_padReport.bRightTrigger = inState->rightTrigger;
-	_padReport.sThumbLX = translateAnalogAxis(inState->leftX);
-	_padReport.sThumbLY = translateAnalogAxis(~inState->leftY);
-	_padReport.sThumbRX = translateAnalogAxis(inState->rightX);
-	_padReport.sThumbRY = translateAnalogAxis(~inState->rightY);
+	_padState.Gamepad.bLeftTrigger = inState->leftTrigger;
+	_padState.Gamepad.bRightTrigger = inState->rightTrigger;
+	_padState.Gamepad.sThumbLX = translateAnalogAxis(inState->leftX);
+	_padState.Gamepad.sThumbLY = translateAnalogAxis(~inState->leftY);
+	_padState.Gamepad.sThumbRX = translateAnalogAxis(inState->rightX);
+	_padState.Gamepad.sThumbRY = translateAnalogAxis(~inState->rightY);
 
 	if (inState->battery[1] & 0x08) // Charging bit
 		_batteryState = 0xFF;
@@ -343,14 +342,14 @@ void DualSensePad::convertPadStateUsb01() {
 void DualSensePad::convertPadStateBluetooth01() {
 	const DS5RawStateBluetooth01* inState = (DS5RawStateBluetooth01*)(_inputBuffer + 3);
 
-	_padReport.wButtons = mapButtons(inState->buttonDpad, inState->moreButtons);
+	_padState.Gamepad.wButtons = mapButtons(inState->buttonDpad, inState->moreButtons);
 
-	_padReport.bLeftTrigger = inState->leftTrigger;
-	_padReport.bRightTrigger = inState->rightTrigger;
-	_padReport.sThumbLX = translateAnalogAxis(inState->leftX);
-	_padReport.sThumbLY = translateAnalogAxis(~inState->leftY);
-	_padReport.sThumbRX = translateAnalogAxis(inState->rightX);
-	_padReport.sThumbRY = translateAnalogAxis(~inState->rightY);
+	_padState.Gamepad.bLeftTrigger = inState->leftTrigger;
+	_padState.Gamepad.bRightTrigger = inState->rightTrigger;
+	_padState.Gamepad.sThumbLX = translateAnalogAxis(inState->leftX);
+	_padState.Gamepad.sThumbLY = translateAnalogAxis(~inState->leftY);
+	_padState.Gamepad.sThumbRX = translateAnalogAxis(inState->rightX);
+	_padState.Gamepad.sThumbRY = translateAnalogAxis(~inState->rightY);
 
 	_batteryState = 0;
 }

@@ -8,9 +8,8 @@
 #pragma comment(lib, "XInput.lib")
 #pragma comment(lib, "Xinput9_1_0.lib")
 
-XBoxPad::XBoxPad(DWORD physicalPadId) : _physicalPadId(physicalPadId), _padState() {
+XBoxPad::XBoxPad(DWORD physicalPadId) : _physicalPadId(physicalPadId) {
     _deviceError = (_physicalPadId < 0);
-	memset(&_padState, 0, sizeof(XINPUT_STATE));
 }
 
 XBoxPad::~XBoxPad() {
