@@ -1,6 +1,7 @@
 #include "DualShockPad.h"
 #include "System.h"
 #include <algorithm>
+#include <stdexcept>
 #include "DualShockPad_HW.h"
 
 #pragma comment(lib, "hidapi.lib")
@@ -17,14 +18,18 @@ DualPad* DualPad::detectController() {
 	DualPad* resultPad = nullptr;
 
 	struct hid_device_info* devInfoList = hid_enumerate(VENDOR_ID_SONY, 0x0);
-	for (struct hid_device_info* devInfo = devInfoList; devInfo != NULL; devInfo = devInfo->next) {
-		if (DUALSENSE_PRODUCT_IDS.find(devInfo->product_id) != DUALSENSE_PRODUCT_IDS.end()) {
-			resultPad = new DualSensePad(devInfo->vendor_id, devInfo->product_id, devInfo->serial_number);
-			break;
-		} else if (DUALSHOCK4_PRODUCT_IDS.find(devInfo->product_id) != DUALSHOCK4_PRODUCT_IDS.end()) {
-			resultPad = new DualShockPad(devInfo->vendor_id, devInfo->product_id, devInfo->serial_number);
-			break;
+	try {
+		for (struct hid_device_info* devInfo = devInfoList; devInfo != NULL; devInfo = devInfo->next) {
+			if (DUALSENSE_PRODUCT_IDS.find(devInfo->product_id) != DUALSENSE_PRODUCT_IDS.end()) {
+				resultPad = new DualSensePad(devInfo->vendor_id, devInfo->product_id, devInfo->serial_number);
+				break;
+			} else if (DUALSHOCK4_PRODUCT_IDS.find(devInfo->product_id) != DUALSHOCK4_PRODUCT_IDS.end()) {
+				resultPad = new DualShockPad(devInfo->vendor_id, devInfo->product_id, devInfo->serial_number);
+				break;
+			}
 		}
+	} catch (const std::runtime_error& e) {
+		log("Controller error: %s\n", e.what());
 	}
 	hid_free_enumeration(devInfoList);
 	if (resultPad && resultPad->isError()) {
@@ -40,35 +45,32 @@ DualPad::DualPad(unsigned short vendorId, unsigned short productId, const wchar_
 	_batteryState = 0; 
 
 	_hidDevice = hid_open(vendorId, productId, serial);
-	if (_hidDevice)
-		hid_set_nonblocking(_hidDevice, 1);
+	if (!_hidDevice)
+		throw std::runtime_error("Failed to open HID device");
+	hid_set_nonblocking(_hidDevice, 1);
 }
 
 DualPad::~DualPad() {
-	if (_hidDevice)
-		hid_close(_hidDevice);
 	System::DestroySema(&_deviceSema);
 }
 
 bool DualPad::isError() const {
-	return (_hidDevice == NULL) || _deviceError;
+	return _deviceError;
 }
 
 bool DualPad::getState(XUSB_REPORT* padReport) {
 	bool result = false;
 	System::WaitSema(&_deviceSema);
-	if (_hidDevice) {
-		int nBytes = hid_read(_hidDevice, _inputBuffer, HID_BUFFER_SIZE);
-		if (nBytes < 0) {
-			debug("Read from HID device error.\n");
-			_deviceError = true;
-		} else if (nBytes == 0) {
-			debug("No response from HID\n");
-		} else {
-			convertPadState();
-			memcpy(padReport, &_padState.Gamepad, sizeof(XUSB_REPORT));
-			result = true;
-		}
+	int nBytes = hid_read(_hidDevice, _inputBuffer, HID_BUFFER_SIZE);
+	if (nBytes < 0) {
+		debug("Read from HID device error.\n");
+		_deviceError = true;
+	} else if (nBytes == 0) {
+		debug("No response from HID\n");
+	} else {
+		convertPadState();
+		memcpy(padReport, &_padState.Gamepad, sizeof(XUSB_REPORT));
+		result = true;
 	}
 	System::SignalSema(&_deviceSema);
 	return result;
@@ -101,9 +103,6 @@ int DualPad::readHidWithRetries(unsigned char* buffer, int length) {
 }
 
 DualShockPad::DualShockPad(unsigned short vendorId, unsigned short productId, const wchar_t* serial) : DualPad(vendorId, productId, serial) {
-	if (!_hidDevice)
-		return;
-
 	int nBytes = readHidWithRetries(_inputBuffer, HID_BUFFER_SIZE);
 	if (nBytes > 0) {
 		_isBluetooth = (_inputBuffer[0] == DS4_REPORT_BLUETOOTH);
@@ -117,10 +116,7 @@ DualShockPad::DualShockPad(unsigned short vendorId, unsigned short productId, co
 		debug("No DS4 found, no response\n");
 }
 
-void DualShockPad::setRumbleColor(unsigned char largeRumble, unsigned char smallRumble, unsigned int color) {
-	if (!_hidDevice)
-		return;
-	
+void DualShockPad::setRumbleColor(unsigned char largeRumble, unsigned char smallRumble, unsigned int color) {	
 	unsigned char buf[79];
 	DS4OutputState* outputState;
 	if (_isBluetooth) {
@@ -231,9 +227,6 @@ void DualShockPad::convertPadState() {
 }
 
 DualSensePad::DualSensePad(unsigned short vendorId, unsigned short productId, const wchar_t* serial) : DualPad(vendorId, productId, serial), _outputSeq(1) {
-	if (!_hidDevice)
-		return;
-
 	int nBytes = readHidWithRetries(_inputBuffer, HID_BUFFER_SIZE);
 	if (nBytes > 0) {
 		_isBluetooth = (_inputBuffer[0] == 0x1F);
@@ -261,8 +254,6 @@ DualSensePad::DualSensePad(unsigned short vendorId, unsigned short productId, co
 static const unsigned char DEFAULT_EFFECT[] = { 0x26, 0x90, 0xA0, 0xFF, 0x00, 0x00, 0x00, 0x00 };
 
 void DualSensePad::setRumbleColor(unsigned char largeRumble, unsigned char smallRumble, unsigned int color) {
-	if (!_hidDevice)
-		return;
 	unsigned char buf[79];
 	unsigned char* commandBuf, *l2Effect, *r2Effect;
 	if (_isBluetooth) {
