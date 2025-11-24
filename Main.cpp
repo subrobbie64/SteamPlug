@@ -194,7 +194,7 @@ void SteamPlugMain::run() {
     VirtualPad virtualPad(*_buttplugDevice);
 
     unsigned long long waitPadDetection = 0;
-    int cycleCount = 0, lastPlugBatteryLevel = -1, lastPadBatteryLevel = -1;
+    int cycleCount = 0, lastPlugBatteryLevel = -1, lastPadBatteryLevel = -1, physPadWasPresent = true;
     bool testing = false;
     ControllerMode mode;
     int physicalPadIndex;
@@ -207,13 +207,15 @@ void SteamPlugMain::run() {
 			_buttplugDevice->connect();
 
         virtualPad.updateState();
-        if ((physicalPad == NULL) || physicalPad->isError()) {
+		bool physPadIsPresent = (physicalPad != NULL) && !physicalPad->isError();
+        if (physPadWasPresent != physPadIsPresent) {
             Terminal::clearLine(LINE_PHYSPAD_STATUS);
             Terminal::printXy(1, LINE_PHYSPAD_STATUS, RED, "Physical gamepad: waiting for controller.");
             virtualPad.setPhysicalPad(NULL);
             delete physicalPad;
             physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
             cycleCount = 0;
+			physPadWasPresent = physPadIsPresent;
         }
         
         if (testing)
@@ -255,11 +257,11 @@ void SteamPlugMain::run() {
             Terminal::printXy(1, LINE_VIRTPAD_STATUS, GREEN, "Emulating X360 controller with index %d.", virtualPad.getVirtualPadUserIndex() + 1);
         }
 
-        if ((cycleCount == 0) || (lastPlugBatteryLevel != _buttplugDevice->getBatteryLevel())) {
+        if (lastPlugBatteryLevel != _buttplugDevice->getBatteryLevel()) {
             lastPlugBatteryLevel = _buttplugDevice->getBatteryLevel();
             printPlugBatteryLevel(lastPlugBatteryLevel);
         }
-		if ((cycleCount == 0) || (physicalPad == NULL) || (lastPadBatteryLevel != physicalPad->getBatteryState())) {
+		if (physicalPad && (lastPadBatteryLevel != physicalPad->getBatteryState())) {
             lastPadBatteryLevel = physicalPad ? physicalPad->getBatteryState() : 0;
             printPadBatteryLevel(lastPadBatteryLevel);
 		}
