@@ -51,6 +51,7 @@ void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value,
 		if (response[0] != 'Z')
 			log("WARN: This does not look like a Hush device\n");
 		_deviceId = response;
+		_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
 		issueCommand("Battery;");
 	} else if (isdigit(response[0]) && (Length <= 4)) {
 		_batteryLevel = std::stoi(response);
@@ -59,8 +60,8 @@ void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value,
 		disconnect();
 	} else if (response.compare("OK;") == 0) {
 		if (_readBatteryAt < System::GetMicros()) {
-			issueCommand("Battery;");
 			_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
+			issueCommand("Battery;");
 		}
 	} else if (response[0] == 's') {
 		debug("BP sent error %s\n", response.c_str());

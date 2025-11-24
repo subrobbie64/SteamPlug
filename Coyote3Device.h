@@ -20,6 +20,7 @@ protected:
 	virtual void onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length);
 
 private:
+	unsigned char encodeFrequency(unsigned short frequency) const;
 	void sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity);
 
 	void streamThread();

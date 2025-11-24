@@ -65,10 +65,10 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 			_confirmedChannelStrength[0] = Value[2];
 			_confirmedChannelStrength[1] = Value[3];
 		} else
-			printf("Unexpected serial: %02X, expected %02X\n", Value[1], _expectedSerial);
+			log("Unexpected serial: %02X, expected %02X\n", Value[1], _expectedSerial);
 		_expectedSerial = 0xFF;
 	} else
-		printf(" => UNKNOWN. RECV: %s\n", hexString(Value, Length).c_str());
+		log(" => UNKNOWN: RECV: %s\n", hexString(Value, Length).c_str());
 }
 
 void CoyoteDevice::getChannelIntensity(int* levelA, int* levelB) const {
@@ -112,7 +112,7 @@ enum SetChannelStrenthMethod {
 	SCSM_ABSOLUTE = 3
 };
 
-unsigned char encodeFrequency(unsigned short frequency) {
+unsigned char CoyoteDevice::encodeFrequency(unsigned short frequency) const {
 	assert((frequency >= 10) && (frequency <= 1000));
 	if (frequency <= 100)
 		return (unsigned char)frequency;
