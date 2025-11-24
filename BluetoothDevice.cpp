@@ -32,6 +32,8 @@ const std::string& BluetoothDevice::getDeviceName() const {
 }
 
 void BluetoothDevice::connect() {
+	if (_status == BT_CONNECTED || _status == BT_CONNECTING)
+		return;
 	if (_connectRetryAt <= System::GetMicros()) {
 		_connectRetryAt = System::GetMicros() + CONNECT_RETRY_MS * 1000;
 		_deviceName = BluetoothBase::getDeviceName(_wclGattClient.Address);
