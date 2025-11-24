@@ -120,9 +120,10 @@ ButtplugDevice* SteamPlugMain::openButtplugDevice() {
 #else
     buttplugDevice = new HismithDevice(*_buttplugConfig);
 #endif
-    buttplugDevice->connect();
-    while (!buttplugDevice->isConnected())
-        System::Sleep(1000);
+    while (!buttplugDevice->isConnected()) {
+        buttplugDevice->connect();
+        System::Sleep(500);
+    }
 	log("%s connected.\n", buttplugDevice->getDeviceName().c_str());
     System::Sleep(500);
 
@@ -201,6 +202,9 @@ void SteamPlugMain::run() {
 	Terminal::clearScreen();
     while (true) {
         Terminal::getTerminalSize(&_terminalWidth, &_terminalHeight);
+
+        if (!_buttplugDevice->isConnected())
+			_buttplugDevice->connect();
 
         virtualPad.updateState();
         if ((physicalPad == NULL) || physicalPad->isError()) {

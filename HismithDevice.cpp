@@ -17,8 +17,10 @@ void HismithDevice::runCommand(unsigned char command, unsigned char value) {
 	commandBuffer[2] = value;
 	commandBuffer[3] = command + value;
 	const int Res = _wclGattClient.WriteCharacteristicValue(_txCharac, commandBuffer, 4, plNone, wkWithoutResponse);
-	if (Res != WCL_E_SUCCESS)
+	if (Res != WCL_E_SUCCESS) {
 		debug("WriteCharacteristicValue failed 0x%X\n", Res);
+		disconnect();
+	}
 }
 
 void HismithDevice::setFuckMachineSpeed(int speed) {
@@ -80,8 +82,6 @@ bool HismithDevice::onConnectionEstablished() {
 }
 
 void HismithDevice::setVibrate(unsigned char effectiveVibrationPercent) {
-	if (!isConnected())
-		return;
 	_effectiveVibrationPercent = effectiveVibrationPercent;
 	setFuckMachineSpeed(std::clamp((int)effectiveVibrationPercent, 0, 100));
 }

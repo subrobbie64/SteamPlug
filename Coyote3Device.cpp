@@ -157,8 +157,8 @@ void CoyoteDevice::streamThread() {
 				bChWaveform->frequency[i] = 10;
 				bChWaveform->intensity[i] = (_levelB * _effectiveVibrationPercent) / 100;
 			}
-			_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse);
-			System::SetEvent(_rumbleEvent);
+			if (_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse) != WCL_E_SUCCESS)
+				disconnect();
 
 			if (_readBatteryAt < System::GetMicros()) {
 				unsigned char* batteryBuffer;
@@ -174,10 +174,9 @@ void CoyoteDevice::streamThread() {
 				}
 				_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
 			}
-
-			if (_effectiveVibrationPercent == 0)
-				System::WaitEvent(_rumbleEvent);
 		}
+		if (_effectiveVibrationPercent == 0)
+			System::WaitEvent(_rumbleEvent);
 		System::Sleep(100);
 	}
 }

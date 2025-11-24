@@ -4,7 +4,7 @@
 #pragma comment(lib, "WclBluetoothFramework.lib")
 #pragma comment(lib, "Ws2_32.lib")
 
-#define CONNECT_RETRY_MS 2500
+#define CONNECT_RETRY_MS 5000
 
 BluetoothDevice::BluetoothDevice(ButtplugConfig& config) : _config(config), _connectRetryAt(0), _deviceName(), _status(BT_DISCONNECTED) {
 	__hook(&CwclGattClient::OnConnect, &_wclGattClient, &BluetoothDevice::wclGattClientConnect);
@@ -55,9 +55,7 @@ void BluetoothDevice::disconnect() {
 	_status = BT_DISCONNECTED;
 }
 
-bool BluetoothDevice::isConnected() {
-	if (_status == BT_DISCONNECTED)
-		connect();
+bool BluetoothDevice::isConnected() const {
 	return _status == BT_CONNECTED;
 }
 

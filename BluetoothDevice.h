@@ -10,7 +10,7 @@ public:
 	BluetoothDevice(ButtplugConfig& config);
 	virtual ~BluetoothDevice();
 	void connect();
-	bool isConnected();
+	bool isConnected() const;
 	const std::string& getDeviceName() const;
 
 protected:
