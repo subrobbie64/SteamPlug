@@ -126,11 +126,11 @@ ButtplugDevice* SteamPlugMain::openButtplugDevice() {
 	log("%s connected.\n", buttplugDevice->getDeviceName().c_str());
     System::Sleep(500);
 
-    buttplugDevice->setVibrate(40, 40);
+    buttplugDevice->setGamepadVibration(80, 80);
     Sleep(200);
-    buttplugDevice->setVibrate(20, 20);
+    buttplugDevice->setGamepadVibration(25, 25);
     Sleep(200);
-    buttplugDevice->setVibrate(0, 0);
+    buttplugDevice->setGamepadVibration(0, 0);
 
     Terminal::clearScreen();
 
@@ -198,6 +198,7 @@ void SteamPlugMain::run() {
     ControllerMode mode;
     int physicalPadIndex;
     PhysicalPad* physicalPad = NULL;
+	Terminal::clearScreen();
     while (true) {
         Terminal::getTerminalSize(&_terminalWidth, &_terminalHeight);
 
@@ -290,12 +291,12 @@ void SteamPlugMain::printTestStatus(PhysicalPad* physicalPad, VirtualPad& virtua
 void SteamPlugMain::printVibrationStatus() {
 #ifdef USE_COYOTE
     int coyoteChannelA, coyoteChannelB;
-    static_cast<CoyoteDevice*>(_buttplugDevice)->getConfigVibrate(&coyoteChannelA, &coyoteChannelB);
+    static_cast<CoyoteDevice*>(_buttplugDevice)->getChannelIntensity(&coyoteChannelA, &coyoteChannelB);
     Terminal::printXy(_terminalWidth - 40, LINE_KEY_HELP + 0, WHITE, "Ch A/B: \x1B[%02Xm%3d%% / %3d%%", YELLOW, coyoteChannelA, coyoteChannelB);
     Terminal::printXy(_terminalWidth - 40, LINE_KEY_HELP + 1, WHITE, "Q/A: Ch A, W/S: Ch B");
 #endif
     int rumbleScaleLeft, rumbleScaleRight;
-    _buttplugDevice->getVibrate(&rumbleScaleLeft, &rumbleScaleRight);
+    _buttplugDevice->getVibrationIntensity(&rumbleScaleLeft, &rumbleScaleRight);
     Terminal::printXy(_terminalWidth - 20, LINE_KEY_HELP + 0, WHITE, "Vib L/R: \x1B[%02Xm%3d%% / %3d%%", YELLOW, rumbleScaleLeft, rumbleScaleRight);
     Terminal::printXy(_terminalWidth - 20, LINE_KEY_HELP + 1, WHITE, "O/L: Left, +/-: Right");
     Terminal::printXy(_terminalWidth - 20, LINE_KEY_HELP + 2, WHITE, "T: Test Vibrations");
@@ -348,7 +349,7 @@ void SteamPlugMain::printPadBatteryLevel(unsigned char batteryLevel) {
 
 void SteamPlugMain::atProgramExit() {
     if (_buttplugDevice) {
-        _buttplugDevice->setVibrate(0, 0);
+        _buttplugDevice->setGamepadVibration(0, 0);
         System::Sleep(250);
     }
 }

@@ -10,7 +10,7 @@ HushDevice::~HushDevice() {
 	System::DestroySema(&_runningCommand);
 }
 
-void HushDevice::onConnectionEstablished() {
+bool HushDevice::onConnectionEstablished() {
 	const ButtplugDeviceDefinition* buttplugDefinition = &HUSH_DEVICE[_config.getHushType()];
 	int Res;
 	if ((Res = _wclGattClient.FindService(buttplugDefinition->serviceId, _buttplugService)) != WCL_E_SUCCESS)
@@ -26,9 +26,8 @@ void HushDevice::onConnectionEstablished() {
 	else if (!issueCommand("DeviceType;"))
 		debug("Unable to query device type\n");
 	else
-		return; // Success
-	
-	disconnect();
+		return true; // Success
+	return false;
 }
 
 bool HushDevice::issueCommand(const char* commandString) {
@@ -77,6 +76,10 @@ void HushDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	int hushVibrateSetting = std::clamp((_effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
 	sprintf(commandBuffer, "Vibrate:%d;", hushVibrateSetting);
 	issueCommand(commandBuffer);
+}
+
+bool HushDevice::isValidType(int type) {
+	return (type >= 0) && (type < NUM_HUSH_DEVICES);
 }
 
 const std::string& HushDevice::getDeviceId() const {

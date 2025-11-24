@@ -15,17 +15,17 @@ void ButtplugDevice::adjustVibration(int bySmallRumble, int byBigRumble) {
 	_config.toFile();
 }
 
-void ButtplugDevice::setVibrate(unsigned char smallRumble, unsigned char bigRumble) {
+void ButtplugDevice::getVibrationIntensity(int* smallRumble, int* bigRumble) const {
+	*smallRumble = _smallRumbleIntensity;
+	*bigRumble = _bigRumbleIntensity;
+}
+
+void ButtplugDevice::setGamepadVibration(unsigned char smallRumble, unsigned char bigRumble) {
 	unsigned char newVibSetting = std::clamp(((smallRumble * _smallRumbleIntensity + bigRumble * _bigRumbleIntensity) * 100) / (100 * 255), 0, 100);
 	if (_effectiveVibrationPercent != newVibSetting) {
 		_effectiveVibrationPercent = newVibSetting;
 		setVibrate(_effectiveVibrationPercent);
 	}
-}
-
-void ButtplugDevice::getVibrate(int* smallRumble, int* bigRumble) const {
-	*smallRumble = _smallRumbleIntensity;
-	*bigRumble = _bigRumbleIntensity;
 }
 
 int ButtplugDevice::getEffectiveVibration() const {

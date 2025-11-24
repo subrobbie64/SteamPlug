@@ -26,7 +26,7 @@ CoyoteDevice::~CoyoteDevice() {
 	System::WaitThread(_streamThread);
 }
 
-void CoyoteDevice::onConnectionEstablished() {
+bool CoyoteDevice::onConnectionEstablished() {
 	int Res;
 	if ((Res = _wclGattClient.FindService(SERVICE_UUID, _coyoteService)) != WCL_E_SUCCESS)
 		error("FindService failed 0x%X!\n", Res);
@@ -50,7 +50,9 @@ void CoyoteDevice::onConnectionEstablished() {
 
 		const int maxLimit = _config.enableCoyote200() ? 200 : 100;
 		sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
+		return true;
 	}
+	return false;
 }
 
 void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) {
@@ -67,6 +69,11 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 		_expectedSerial = 0xFF;
 	} else
 		printf(" => UNKNOWN. RECV: %s\n", hexString(Value, Length).c_str());
+}
+
+void CoyoteDevice::getChannelIntensity(int* levelA, int* levelB) const {
+	*levelA = _levelA;
+	*levelB = _levelB;
 }
 
 void CoyoteDevice::adjustChannelIntensity(int levelA, int levelB) {

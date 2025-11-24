@@ -20,7 +20,6 @@ public:
 	int getVirtualPadUserIndex() const;
 
 	void setPhysicalPad(PhysicalPad* physicalPad);
-	bool isPhysicalPadError();
 
 	void updateState();
 	

@@ -30,7 +30,7 @@ void ButtplugConfig::setHushType(int type) {
 
 bool ButtplugConfig::isValid() const {
 #ifdef USE_HUSH2
-	if ((_type < 0) || (_type >= HushDevice::NUM_HUSH_DEVICES))
+	if (!HushDevice::isValidType(_type))
 		return false;
 #endif
 	return _address != 0;

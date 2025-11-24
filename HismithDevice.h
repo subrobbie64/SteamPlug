@@ -10,7 +10,7 @@ public:
 
 	virtual void setVibrate(unsigned char effectiveVibrationPercent);
 protected:
-	virtual void onConnectionEstablished();
+	virtual bool onConnectionEstablished();
 	virtual void onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length);
 
 private:

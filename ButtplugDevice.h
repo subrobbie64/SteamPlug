@@ -8,8 +8,8 @@ public:
 	ButtplugDevice(ButtplugConfig& config);
 	virtual ~ButtplugDevice();
 	void adjustVibration(int bySmallRumble, int byBigRumble);
-	void getVibrate(int* smallRumble, int* bigRumble) const;
-	void setVibrate(unsigned char smallRumble, unsigned char bigRumble);
+	void getVibrationIntensity(int* smallRumble, int* bigRumble) const;
+	void setGamepadVibration(unsigned char smallRumble, unsigned char bigRumble);
 	int getEffectiveVibration() const;
 	int getBatteryLevel() const;
 

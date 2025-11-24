@@ -63,15 +63,17 @@ bool BluetoothDevice::isConnected() {
 
 void BluetoothDevice::wclGattClientConnect(void* Sender, const int Error) {
 	if (Error == WCL_E_SUCCESS) {
-		onConnectionEstablished();
-		_status = BT_CONNECTED;
-	} else {
-		if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
-			debug("BTLE device not found.\n");
-		else
-			debug("Connection failed with error 0x%X\n", Error);
-		disconnect();
+		if (onConnectionEstablished()) {
+			debug("Connection established.\n");
+			return; // success
+		}
 	}
+
+	disconnect();
+	if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
+		log("BTLE device not found.\n");
+	else
+		log("Connection failed with error 0x%X\n", Error);
 }
 
 void BluetoothDevice::wclGattClientDisconnect(void* Sender, const int Reason) {

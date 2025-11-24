@@ -12,10 +12,11 @@ public:
 	virtual ~CoyoteDevice();
 	
 	void adjustChannelIntensity(int levelA, int levelB);
+	void getChannelIntensity(int* levelA, int* levelB) const;
 	virtual void setVibrate(unsigned char effectiveVibrationPercent);
 
 protected:
-	virtual void onConnectionEstablished();
+	virtual bool onConnectionEstablished();
 	virtual void onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length);
 
 private:

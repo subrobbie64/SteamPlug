@@ -45,7 +45,7 @@ unsigned short HismithDevice::getDeviceModelId() {
 	return modelId;
 }
 
-void HismithDevice::onConnectionEstablished() {
+bool HismithDevice::onConnectionEstablished() {
 	int Res;
 	if ((Res = _wclGattClient.FindService(INFO_SERVICE_UUID, _infoService)) != WCL_E_SUCCESS)
 		log("FindService failed 0x%X!\n", Res);
@@ -73,10 +73,10 @@ void HismithDevice::onConnectionEstablished() {
 			log("Connected to unknown Hismith device (0x%04X)\n", _deviceId);
 		log("Setting speed 0\n");
 		setFuckMachineSpeed(0);
-		return; // Success
+		_status = BT_CONNECTED;
+		return true; // Success
 	}
-
-	disconnect();
+	return false;
 }
 
 void HismithDevice::setVibrate(unsigned char effectiveVibrationPercent) {

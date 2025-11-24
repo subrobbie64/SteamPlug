@@ -21,7 +21,7 @@ protected:
 	};
 	void disconnect();
 
-	virtual void onConnectionEstablished() = 0;
+	virtual bool onConnectionEstablished() = 0;
 	virtual void onClientCharacteristicChanged(const unsigned char* const Value, const unsigned long Length) = 0;
 	
 	CwclGattClient _wclGattClient;

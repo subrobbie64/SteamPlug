@@ -105,19 +105,10 @@ void VirtualPad::setPhysicalPad(PhysicalPad* physicalPad) {
 	System::SignalSema(&_physicalPadSema);
 }
 
-bool VirtualPad::isPhysicalPadError() {
-	bool isError = true;
-	System::WaitSema(&_physicalPadSema);
-	if (_physicalPad)
-		isError = _physicalPad->isError();
-	System::SignalSema(&_physicalPadSema);
-	return isError;
-}
-
 void VirtualPad::updateState() {
 	static bool waitRelease = false;
 	System::WaitSema(&_physicalPadSema);
-	bool gotUpdate = false, isError = false;
+	bool gotUpdate = false, isError;
 	if (_physicalPad) {
 		gotUpdate = _physicalPad->getState(&_padState);
 		isError = _physicalPad->isError();
@@ -145,7 +136,7 @@ void VirtualPad::setRumble(UCHAR LargeMotor, UCHAR SmallMotor) {
 	if ((_rumbleStatusLarge != LargeMotor) || (_rumbleStatusSmall != SmallMotor)) {
 		_rumbleStatusLarge = LargeMotor;
 		_rumbleStatusSmall = SmallMotor;
-		_buttplugDevice.setVibrate(SmallMotor, LargeMotor);
+		_buttplugDevice.setGamepadVibration(SmallMotor, LargeMotor);
 
 		System::WaitSema(&_physicalPadSema);
 		if (_physicalPad)
@@ -155,10 +146,10 @@ void VirtualPad::setRumble(UCHAR LargeMotor, UCHAR SmallMotor) {
 }
 
 bool VirtualPad::getRumbleState(int* commandCount, int* statusLarge, int* statusSmall) const {
-	*statusLarge = _rumbleStatusLarge;
-	*statusSmall = _rumbleStatusSmall;
 	if (*commandCount == _rumbleInstructionCount)
 		return false;
+	*statusLarge = _rumbleStatusLarge;
+	*statusSmall = _rumbleStatusSmall;
 	*commandCount = _rumbleInstructionCount;
 	return true;
 }
