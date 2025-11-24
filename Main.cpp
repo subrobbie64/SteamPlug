@@ -208,6 +208,7 @@ void SteamPlugMain::run() {
 
         virtualPad.updateState();
         if ((physicalPad == NULL) || physicalPad->isError()) {
+            Terminal::clearLine(LINE_PHYSPAD_STATUS);
             Terminal::printXy(1, LINE_PHYSPAD_STATUS, RED, "Physical gamepad: waiting for controller.");
             virtualPad.setPhysicalPad(NULL);
             delete physicalPad;
@@ -247,7 +248,8 @@ void SteamPlugMain::run() {
         if (cycleCount == 0) {
             if (physicalPad) {
                 char strBuf[8];
-                Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s %s                      ", (mode == DUALSHOCK) ? "DualShock" : "XBox", (physicalPadIndex < 0) ? "" : _itoa(physicalPadIndex + 1, strBuf, 10));
+                Terminal::clearLine(LINE_PHYSPAD_STATUS);
+                Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s %s", (mode == DUALSHOCK) ? "DualShock" : "XBox", (physicalPadIndex < 0) ? "" : _itoa(physicalPadIndex + 1, strBuf, 10));
                 virtualPad.setPhysicalPad(physicalPad);
             }
             Terminal::printXy(1, LINE_VIRTPAD_STATUS, GREEN, "Emulating X360 controller with index %d.", virtualPad.getVirtualPadUserIndex() + 1);
@@ -326,14 +328,16 @@ void SteamPlugMain::printPlugBatteryLevel(unsigned char plugBatteryLevel) {
     else if (plugBatteryLevel <= PLUG_BATTERY_LEVEL_LOW)
         col = YELLOW;
 
+    Terminal::clearLine(LINE_PLUG_BATTERY);
     if (plugBatteryLevel & BUTTPLUG_WIRED) {
         Terminal::printXy(1, LINE_PLUG_BATTERY, GREEN, DEVICE_NAME);
         Terminal::printXy(0, LINE_PLUG_BATTERY, GREEN, " -Wired- ");
     } else
-	    printBar(col, LINE_PLUG_BATTERY, DEVICE_NAME " bat:", plugBatteryLevel);
+        printBar(col, LINE_PLUG_BATTERY, DEVICE_NAME " bat:", plugBatteryLevel);
 }
 
 void SteamPlugMain::printPadBatteryLevel(unsigned char batteryLevel) {
+    Terminal::clearLine(LINE_PHYSPAD_BATTERY);
     if (batteryLevel == BATTERY_WIRED) {
         Terminal::printXy(1, LINE_PHYSPAD_BATTERY, GREEN, "Pad bat:");
         Terminal::printXy(0, LINE_PHYSPAD_BATTERY, GREEN, " -Wired- ");

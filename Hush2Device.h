@@ -34,7 +34,7 @@ private:
 	syssema_t _runningCommand;
 	unsigned long long _readBatteryAt;
 
-	static const int RETRY_DELAY_MILLIS, CHECK_BATTERY_INTERVAL_MILLIS;
+	static const int COMMAND_TIMEOUT_MILLIS, RETRY_DELAY_MILLIS, CHECK_BATTERY_INTERVAL_MILLIS;
 	static const int MAX_VIBRATION_SETTING;
 
 	static const ButtplugDeviceDefinition HUSH_DEVICE[];

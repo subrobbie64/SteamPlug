@@ -94,6 +94,14 @@ namespace Terminal {
 		printf("%s", buffer);
 	}
 
+	void clearLine(int y) {
+		int w, h;
+		getTerminalSize(&w, &h);
+		printf("\033[%d;%dH", y, 1);
+		for (int i = 0; i < w; i++)
+			printf(" ");
+	}
+
 	bool enableVirtualTerminalMode() {
 		// Set output mode to handle virtual terminal sequences
 		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);

@@ -39,6 +39,7 @@ namespace Terminal {
 	void setTerminalCursorVisibility(BOOL visible);
 	void getTerminalCursorPosition(int* x, int* y);
 	void printXy(int x, int y, Color color, const char* str, ...);
+	void clearLine(int y);
 	bool enableVirtualTerminalMode();
 }
 

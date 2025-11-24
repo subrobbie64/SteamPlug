@@ -31,7 +31,7 @@ bool HushDevice::onConnectionEstablished() {
 }
 
 bool HushDevice::issueCommand(const char* commandString) {
-	if (System::WaitSema(&_runningCommand, 1000) == SEMA_TIMEOUT)
+	if (System::WaitSema(&_runningCommand, COMMAND_TIMEOUT_MILLIS) == SEMA_TIMEOUT)
 		log("WARN: Timeout waiting for previous command to complete\n");
 	const int Res = _wclGattClient.WriteCharacteristicValue(_txCharac, (const unsigned char*)commandString, (unsigned int)strlen(commandString), plNone, wkWithoutResponse);
 	if (Res == WCL_E_SUCCESS)
@@ -100,6 +100,7 @@ threadReturn WINAPI HushDevice::retryHandlerFunc(void* arg) {
 	return THREAD_RETURN;
 }
 
+const int HushDevice::COMMAND_TIMEOUT_MILLIS = 500;
 const int HushDevice::RETRY_DELAY_MILLIS = 50;
 const int HushDevice::CHECK_BATTERY_INTERVAL_MILLIS = 15000; // 15 seconds
 
