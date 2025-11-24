@@ -1,6 +1,5 @@
 #include "VirtualPad.h"
 #include "System.h"
-#include <algorithm>
 
 #pragma comment(lib, "ViGEmClient.lib")
 

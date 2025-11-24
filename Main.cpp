@@ -235,15 +235,15 @@ void SteamPlugMain::run() {
         }
 
         bool physPadIsPresent = (physicalPad != NULL) && !physicalPad->isError();
-        if ((cycleCount == 0) || (physPadWasPresent != physPadIsPresent)) {
+        if ((cycleCount == 0) && (!physicalPad || (physPadWasPresent != physPadIsPresent))) {
             Terminal::clearLine(LINE_PHYSPAD_STATUS);
             Terminal::printXy(1, LINE_PHYSPAD_STATUS, RED, "Physical gamepad: waiting for controller.");
             virtualPad.setPhysicalPad(NULL);
             delete physicalPad;
             physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
             cycleCount = 0;
-            physPadWasPresent = physPadIsPresent;
         }
+        physPadWasPresent = physPadIsPresent;
 
         int rumbleCommands, rumbleLeft, rumbleRight;
         if (virtualPad.getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight) || ((cycleCount % 100) == 0))
@@ -263,7 +263,7 @@ void SteamPlugMain::run() {
             lastPlugBatteryLevel = _buttplugDevice->getBatteryLevel();
             printPlugBatteryLevel(lastPlugBatteryLevel);
         }
-		if (physicalPad && (lastPadBatteryLevel != physicalPad->getBatteryState())) {
+		if ((cycleCount == 0) || (physicalPad && (lastPadBatteryLevel != physicalPad->getBatteryState()))) {
             lastPadBatteryLevel = physicalPad ? physicalPad->getBatteryState() : 0;
             printPadBatteryLevel(lastPadBatteryLevel);
 		}

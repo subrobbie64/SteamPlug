@@ -1,8 +1,6 @@
 #include "XBoxPad.h"
-#include "ButtplugDevice.h"
 #include "System.h"
-
-#include <algorithm>
+#include "VirtualPad.h"
 
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "XInput.lib")
@@ -15,7 +13,7 @@ XBoxPad::XBoxPad(DWORD physicalPadId) : _physicalPadId(physicalPadId) {
 XBoxPad::~XBoxPad() {
 }
 
-DWORD XBoxPad::getPadId() {
+DWORD XBoxPad::getPadId() const {
 	return _physicalPadId;
 }
 

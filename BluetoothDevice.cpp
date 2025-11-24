@@ -69,6 +69,7 @@ void BluetoothDevice::wclGattClientConnect(void* Sender, const int Error) {
 		}
 	}
 
+	log("Connection error.\n");
 	disconnect();
 	if (Error == WCL_E_BLUETOOTH_LE_DEVICE_NOT_FOUND)
 		log("BTLE device not found.\n");

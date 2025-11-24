@@ -1,17 +1,16 @@
 #pragma once
 
-#include <wclBluetooth.h>
+#include "wclBluetooth.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <Xinput.h>
-#include "VirtualPad.h"
+#include "PhysicalPad.h"
 
 class XBoxPad : public PhysicalPad {
 public:
     XBoxPad(DWORD physicalPadId);
     virtual ~XBoxPad();
 
-    DWORD getPadId();
+    DWORD getPadId() const;
 
     virtual bool isError() const;
 

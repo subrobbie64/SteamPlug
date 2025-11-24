@@ -40,7 +40,6 @@ DualPad* DualPad::detectController() {
 }
 
 DualPad::DualPad(unsigned short vendorId, unsigned short productId, const wchar_t* serial) : _inputBuffer(), _deviceError(false) {
-	System::CreateSema(&_deviceSema, 1);
 	_isBluetooth = false;
 	_batteryState = 0; 
 
@@ -48,6 +47,8 @@ DualPad::DualPad(unsigned short vendorId, unsigned short productId, const wchar_
 	if (!_hidDevice)
 		throw std::runtime_error("Failed to open HID device");
 	hid_set_nonblocking(_hidDevice, 1);
+
+	System::CreateSema(&_deviceSema, 1);
 }
 
 DualPad::~DualPad() {
