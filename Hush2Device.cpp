@@ -51,6 +51,7 @@ void HushDevice::onClientCharacteristicChanged(const unsigned char* const Value,
 		if (response[0] != 'Z')
 			log("WARN: This does not look like a Hush device\n");
 		_deviceId = response;
+		System::Sleep(2000); // Needed by Hush to estimate the battery level
 		_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
 		issueCommand("Battery;");
 	} else if (isdigit(response[0]) && (Length <= 4)) {
