@@ -194,7 +194,8 @@ void SteamPlugMain::run() {
     VirtualPad virtualPad(*_buttplugDevice);
 
     unsigned long long waitPadDetection = 0;
-    int cycleCount = 0, lastPlugBatteryLevel = -1, lastPadBatteryLevel = -1, physPadWasPresent = true;
+    int cycleCount = 0, lastPlugBatteryLevel = -1, lastPadBatteryLevel = -1;
+    bool physPadWasPresent = true;
     bool testing = false;
     ControllerMode mode;
     int physicalPadIndex;
@@ -207,16 +208,6 @@ void SteamPlugMain::run() {
 			_buttplugDevice->connect();
 
         virtualPad.updateState();
-		bool physPadIsPresent = (physicalPad != NULL) && !physicalPad->isError();
-        if (physPadWasPresent != physPadIsPresent) {
-            Terminal::clearLine(LINE_PHYSPAD_STATUS);
-            Terminal::printXy(1, LINE_PHYSPAD_STATUS, RED, "Physical gamepad: waiting for controller.");
-            virtualPad.setPhysicalPad(NULL);
-            delete physicalPad;
-            physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
-            cycleCount = 0;
-			physPadWasPresent = physPadIsPresent;
-        }
         
         if (testing)
             printTestStatus(physicalPad, virtualPad);
@@ -243,6 +234,17 @@ void SteamPlugMain::run() {
             }
         }
 
+        bool physPadIsPresent = (physicalPad != NULL) && !physicalPad->isError();
+        if ((cycleCount == 0) || (physPadWasPresent != physPadIsPresent)) {
+            Terminal::clearLine(LINE_PHYSPAD_STATUS);
+            Terminal::printXy(1, LINE_PHYSPAD_STATUS, RED, "Physical gamepad: waiting for controller.");
+            virtualPad.setPhysicalPad(NULL);
+            delete physicalPad;
+            physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
+            cycleCount = 0;
+            physPadWasPresent = physPadIsPresent;
+        }
+
         int rumbleCommands, rumbleLeft, rumbleRight;
         if (virtualPad.getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight) || ((cycleCount % 100) == 0))
             printButtplugStatus(rumbleCommands, rumbleLeft, rumbleRight);
@@ -254,10 +256,10 @@ void SteamPlugMain::run() {
                 Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s %s", (mode == DUALSHOCK) ? "DualShock" : "XBox", (physicalPadIndex < 0) ? "" : _itoa(physicalPadIndex + 1, strBuf, 10));
                 virtualPad.setPhysicalPad(physicalPad);
             }
-            Terminal::printXy(1, LINE_VIRTPAD_STATUS, GREEN, "Emulating X360 controller with index %d.", virtualPad.getVirtualPadUserIndex() + 1);
+            Terminal::printXy(1, LINE_VIRTPAD_STATUS, GREEN, "Emulating X360 controller #%d.", virtualPad.getVirtualPadUserIndex() + 1);
         }
 
-        if (lastPlugBatteryLevel != _buttplugDevice->getBatteryLevel()) {
+        if ((cycleCount == 0) || (lastPlugBatteryLevel != _buttplugDevice->getBatteryLevel())) {
             lastPlugBatteryLevel = _buttplugDevice->getBatteryLevel();
             printPlugBatteryLevel(lastPlugBatteryLevel);
         }
