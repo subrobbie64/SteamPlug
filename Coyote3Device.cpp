@@ -44,7 +44,6 @@ bool CoyoteDevice::onConnectionEstablished() {
 		_strengthSerial = 0;
 		_expectedSerial = 0xFF;
 		_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
-		_levelA = _levelB = 0;
 
 		const int maxLimit = _config.enableCoyote200() ? 200 : 100;
 		sendGlobalSettings(maxLimit, maxLimit, 255, 255, 255, 255);
