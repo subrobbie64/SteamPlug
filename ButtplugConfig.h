@@ -7,9 +7,6 @@ public:
 	BtAddress getAddress() const;
 	void setAddress(BtAddress address);
 	
-	int getHushType() const;
-	void setHushType(int type);
-
 	bool isValid() const;
 
 	bool enableCoyote200() const;
@@ -27,7 +24,6 @@ private:
 	static void getConfigFilename(char* buffer);
 
 	BtAddress _address;
-	int _type;
 
 	int _vibrateLeft, _vibrateRight;
 	int _channelA, _channelB;

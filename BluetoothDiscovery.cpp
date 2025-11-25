@@ -1,7 +1,10 @@
 #include "BluetoothDiscovery.h"
 #include "ButtplugConfig.h"
+#include "Hush2Device.h"
+#include "Coyote3Device.h"
+#include "HismithDevice.h"
 
-BluetoothDiscovery::BluetoothDiscovery(const std::string& deviceName) : _deviceName(deviceName), _discoveredIntendedDevice(0) {
+BluetoothDiscovery::BluetoothDiscovery(BtDeviceType devType, const std::string& deviceName) : _deviceType(devType), _deviceName(deviceName), _discoveredIntendedDevice(0) {
 	_discoveryCompletedEvent = System::CreateEventFlag();
 
 	__hook(&CwclBluetoothManager::OnDeviceFound, &_wclBluetoothManager, &BluetoothDiscovery::wclBluetoothManagerDeviceFound);
@@ -59,7 +62,6 @@ bool BluetoothDiscovery::runDiscovery(ButtplugConfig* config) {
 		error("No %s devices found.\n", _deviceName.c_str());
 
 	config->setAddress(_discoveredIntendedDevice);
-	storeAdditionalAttributes(config);
 	config->toFile();
 
 	return true;
@@ -123,4 +125,43 @@ void BluetoothDiscovery::wclGattClientDisconnect(void* Sender, const int Reason)
 
 BtAddress BluetoothDiscovery::getDiscoveredDevice() const {
 	return _discoveredIntendedDevice;
+}
+
+bool BluetoothDiscovery::probeDevice(BtAddress address, const std::string& gapName, wclGattServices& btServices) {
+	switch (_deviceType) {
+	case BTD_HUSH2:
+		return HushDevice::detectHushType(btServices) >= 0;
+	case BTD_COYOTE3: {
+		if (gapName.compare(CoyoteDevice::DEVICE_NAME))
+			return false;
+
+		bool foundCoyoteService = false, foundBatteryService = false;
+		for (const auto& service : btServices) {
+			if (!service.Uuid.IsShortUuid)
+				continue;
+			if (service.Uuid.ShortUuid == CoyoteDevice::SERVICE_UUID.ShortUuid)
+				foundCoyoteService = true;
+			if (service.Uuid.ShortUuid == CoyoteDevice::BATTERY_SERVICE_UUID.ShortUuid)
+				foundBatteryService = true;
+		}
+		return foundCoyoteService && foundBatteryService;
+	}
+	case BTD_HISMITH: {
+		bool infoFound = false, txFound = false, rxFound = false;
+		for (wclGattService& service : btServices) {
+			if (service.Uuid.ShortUuid == HismithDevice::INFO_SERVICE_UUID.ShortUuid)
+				infoFound = true;
+			else if (service.Uuid.ShortUuid == HismithDevice::TX_SERVICE_UUID.ShortUuid)
+				txFound = true;
+			else if (service.Uuid.ShortUuid == HismithDevice::RX_SERVICE_UUID.ShortUuid)
+				rxFound = true;
+
+			if (infoFound && txFound && rxFound)
+				return true;
+		}
+		return false;
+	}
+	default:
+		return false;
+	}
 }

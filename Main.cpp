@@ -3,14 +3,11 @@
 #include "BluetoothDiscovery.h"
 #include "ButtplugDevice.h"
 #include "Hush2Device.h"
-#include "Hush2Discovery.h"
 #include "HismithDevice.h"
-#include "HismithDiscovery.h"
 #include "ButtplugConfig.h"
 #include "XBoxPad.h"
 #include "DualShockPad.h"
 #include "System.h"
-#include "Coyote3Discovery.h"
 #include "Coyote3Device.h"
 #include <conio.h>
 #include "resource.h"
@@ -92,18 +89,16 @@ SteamPlugMain::~SteamPlugMain() {
 ButtplugDevice* SteamPlugMain::openButtplugDevice() {
     _buttplugConfig = ButtplugConfig::fromFile();
     if (!_buttplugConfig->isValid()) {
-        log("No " DEVICE_NAME " address found in config, running Discovery!\n");
-        BluetoothDiscovery* deviceDiscovery;
+        log("No " DEVICE_NAME " address found in config, running Discovery!\n");        
 #ifdef USE_HUSH2
-        deviceDiscovery = new HushDiscovery();
+        BluetoothDiscovery deviceDiscovery(BTD_HUSH2, "Hush2 Buttplug");
 #elif USE_COYOTE
-        deviceDiscovery = new CoyoteDiscovery();
+        BluetoothDiscovery deviceDiscovery(BTD_COYOTE3, "Coyote 3.0");
 #else
-        deviceDiscovery = new HismithDiscovery();
+        BluetoothDiscovery deviceDiscovery(BTD_HISMITH, "Hismith Fuck Machine");
 #endif
-        if (!deviceDiscovery->runDiscovery(_buttplugConfig))
+        if (!deviceDiscovery.runDiscovery(_buttplugConfig))
             error("No device found!\n");
-        delete deviceDiscovery;
         _buttplugConfig->toFile();
 
         Sleep(2000);
@@ -208,9 +203,6 @@ void SteamPlugMain::run() {
 			_buttplugDevice->connect();
 
         virtualPad.updateState();
-        
-        if (testing)
-            printTestStatus(physicalPad, virtualPad);
 
         if ((cycleCount % 5) == 0) {
             if (_kbhit() || (cycleCount == 0)) {
@@ -234,6 +226,9 @@ void SteamPlugMain::run() {
             }
         }
 
+        if (testing)
+            printTestStatus(physicalPad, virtualPad);
+
         bool physPadIsPresent = (physicalPad != NULL) && !physicalPad->isError();
         if ((cycleCount == 0) || !physicalPad || (physPadWasPresent != physPadIsPresent)) {
             if (!physicalPad || physicalPad->isError()) {
@@ -243,8 +238,9 @@ void SteamPlugMain::run() {
                 physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
                 cycleCount = 0;
             } else {
-                char strBuf[8];
-                Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s %s     ", (mode == DUALSHOCK) ? "DualShock" : "XBox", (physicalPadIndex < 0) ? "" : _itoa(physicalPadIndex + 1, strBuf, 10));
+                Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s ", (mode == DUALSHOCK) ? "DualShock" : "XBox");
+                if (physicalPadIndex >= 0)
+					printf("#%d     ", physicalPadIndex + 1);
                 virtualPad.setPhysicalPad(physicalPad);
             }
             Terminal::printXy(1, LINE_VIRTPAD_STATUS, GREEN, "Emulating X360 controller #%d.", virtualPad.getVirtualPadUserIndex() + 1);

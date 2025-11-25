@@ -92,14 +92,14 @@ int DualPad::readHidWithRetries(unsigned char* buffer, int length) {
 		int nBytes = hid_read(_hidDevice, buffer, length);
 		if (nBytes < 0) {
 			debug("Error reading HID\n");
-			hid_close(_hidDevice);
-			_hidDevice = nullptr;
+			_deviceError = true;
 			return nBytes;
 		} else if (nBytes > 0) // got response
 			return nBytes;
 		else // wait and retry
 			System::Sleep(100);
 	}
+	_deviceError = true;
 	return 0;
 }
 

@@ -6,9 +6,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma warning(disable:6001)
 
-CoyoteDevice::CoyoteDevice(ButtplugConfig &config)
-	: ButtplugDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
-
+CoyoteDevice::CoyoteDevice(ButtplugConfig &config) : ButtplugDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
 	_rumbleEvent = System::CreateEventFlag();
 	
 	_strengthSerial = 0;
@@ -64,9 +62,9 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 		if (_expectedSerial == Value[1]) {
 			_confirmedChannelStrength[0] = Value[2];
 			_confirmedChannelStrength[1] = Value[3];
+			_expectedSerial = 0xFF;
 		} else
 			log("Unexpected serial: %02X, expected %02X\n", Value[1], _expectedSerial);
-		_expectedSerial = 0xFF;
 	} else
 		log(" => UNKNOWN: RECV: %s\n", hexString(Value, Length).c_str());
 }
@@ -175,9 +173,9 @@ void CoyoteDevice::streamThread() {
 				_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
 			}
 		}
+		System::Sleep(100);
 		if (_effectiveVibrationPercent == 0)
 			System::WaitEvent(_rumbleEvent);
-		System::Sleep(100);
 	}
 }
 

@@ -9,7 +9,7 @@
 #define BUTTPLUG_WEIGHT_RIGHT (7 * 5)
 
 ButtplugConfig::ButtplugConfig() 
-	: _address(0), _type(-1), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(10), _channelB(10) {
+	: _address(0), _vibrateLeft(BUTTPLUG_WEIGHT_LEFT), _vibrateRight(BUTTPLUG_WEIGHT_RIGHT), _enableCoyote200(false), _channelA(5), _channelB(5) {
 }
 
 BtAddress ButtplugConfig::getAddress() const {
@@ -20,19 +20,7 @@ void ButtplugConfig::setAddress(BtAddress address) {
 	_address = address;
 }
 
-int ButtplugConfig::getHushType() const {
-	return _type;
-}
-
-void ButtplugConfig::setHushType(int type) {
-	_type = type;
-}
-
 bool ButtplugConfig::isValid() const {
-#ifdef USE_HUSH2
-	if (!HushDevice::isValidType(_type))
-		return false;
-#endif
 	return _address != 0;
 }
 
@@ -66,7 +54,6 @@ void ButtplugConfig::toFile() const {
 	FILE* outf = fopen(cfgFilename, "w");
 	if (outf) {
 		fprintf(outf, "ADDRESS=%s\n", BluetoothBase::MacToString(_address).c_str());
-		fprintf(outf, "TYPE=%d\n", _type);
 		fprintf(outf, "L=%d\nR=%d\n", _vibrateLeft, _vibrateRight);
 		fprintf(outf, "ENABLE_COYOTE_200=%d\n", _enableCoyote200 ? 1 : 0);
 		fprintf(outf, "CHA=%d\nCHB=%d\n", _channelA, _channelB);
@@ -93,8 +80,6 @@ ButtplugConfig *ButtplugConfig::fromFile() {
 				config->_channelA = atoi(line + 4);
 			else if (strncmp(line, "CHB=", 4) == 0)
 				config->_channelB = atoi(line + 4);
-			else if (strncmp(line, "TYPE=", 5) == 0)
-				config->setHushType(atoi(line + 5));
 			else if (strncmp(line, "ENABLE_COYOTE_200=", 17) == 0)
 				config->_enableCoyote200 = (atoi(line + 17) != 0);
 		}

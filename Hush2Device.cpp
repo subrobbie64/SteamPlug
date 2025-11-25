@@ -10,23 +10,41 @@ HushDevice::~HushDevice() {
 	System::DestroySema(&_runningCommand);
 }
 
+int HushDevice::detectHushType(const wclGattServices& services) {
+	for (const wclGattService& service : services) {
+		if (service.Uuid.IsShortUuid)
+			continue;
+		for (int j = 0; j < NUM_HUSH_DEVICES; j++)
+			if (!memcmp(&service.Uuid.LongUuid, &HUSH_DEVICE[j].serviceId.LongUuid, sizeof(GUID)))
+				return j;
+	}
+	return -1;
+}
+
 bool HushDevice::onConnectionEstablished() {
-	const ButtplugDeviceDefinition* buttplugDefinition = &HUSH_DEVICE[_config.getHushType()];
-	int Res;
-	if ((Res = _wclGattClient.FindService(buttplugDefinition->serviceId, _buttplugService)) != WCL_E_SUCCESS)
-		debug("FindService failed 0x%X!\n", Res);
-	else if ((Res = _wclGattClient.FindCharacteristic(_buttplugService, buttplugDefinition->txCharacteristicId, _txCharac)) != WCL_E_SUCCESS)
-		debug("FindCharacteristic (TX) Error: 0x%X", Res);
-	else if ((Res = _wclGattClient.FindCharacteristic(_buttplugService, buttplugDefinition->rxCharacteristicId, _rxCharac)) != WCL_E_SUCCESS)
-		debug("FindCharacteristic (RX) Error: 0x%X", Res);
-	else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
-		debug("Subscribe failed Error 0x%X!\n", Res);
-	else if ((Res = _wclGattClient.WriteClientConfiguration(_rxCharac, true, goNone)) != WCL_E_SUCCESS)
-		debug("WriteClientConfiguration->SubscribeForNotifications failed 0x%X\n", Res);
-	else if (!issueCommand("DeviceType;"))
-		debug("Unable to query device type\n");
-	else
-		return true; // Success
+	wclGattServices btServices;
+	int detectedType = -1;
+	if (_wclGattClient.ReadServices(goNone, btServices) == WCL_E_SUCCESS)
+		detectedType = detectHushType(btServices);
+
+	if (detectedType >= 0) {
+		const ButtplugDeviceDefinition* buttplugDefinition = &HUSH_DEVICE[detectedType];
+		int Res;
+		if ((Res = _wclGattClient.FindService(buttplugDefinition->serviceId, _buttplugService)) != WCL_E_SUCCESS)
+			debug("FindService failed 0x%X!\n", Res);
+		else if ((Res = _wclGattClient.FindCharacteristic(_buttplugService, buttplugDefinition->txCharacteristicId, _txCharac)) != WCL_E_SUCCESS)
+			debug("FindCharacteristic (TX) Error: 0x%X", Res);
+		else if ((Res = _wclGattClient.FindCharacteristic(_buttplugService, buttplugDefinition->rxCharacteristicId, _rxCharac)) != WCL_E_SUCCESS)
+			debug("FindCharacteristic (RX) Error: 0x%X", Res);
+		else if ((Res = _wclGattClient.Subscribe(_rxCharac)) != WCL_E_SUCCESS)
+			debug("Subscribe failed Error 0x%X!\n", Res);
+		else if ((Res = _wclGattClient.WriteClientConfiguration(_rxCharac, true, goNone)) != WCL_E_SUCCESS)
+			debug("WriteClientConfiguration->SubscribeForNotifications failed 0x%X\n", Res);
+		else if (!issueCommand("DeviceType;"))
+			debug("Unable to query device type\n");
+		else
+			return true; // Success
+	}
 	return false;
 }
 
@@ -78,10 +96,6 @@ void HushDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	int hushVibrateSetting = std::clamp((_effectiveVibrationPercent * MAX_VIBRATION_SETTING + 99) / 100, 0, MAX_VIBRATION_SETTING);
 	sprintf(commandBuffer, "Vibrate:%d;", hushVibrateSetting);
 	issueCommand(commandBuffer);
-}
-
-bool HushDevice::isValidType(int type) {
-	return (type >= 0) && (type < NUM_HUSH_DEVICES);
 }
 
 const std::string& HushDevice::getDeviceId() const {

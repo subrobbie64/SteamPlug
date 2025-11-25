@@ -6,17 +6,22 @@
 
 class ButtplugConfig;
 
+enum BtDeviceType {
+	BTD_HUSH2,
+	BTD_COYOTE3,
+	BTD_HISMITH
+};
+
 class BluetoothDiscovery : public BluetoothBase {
 public:
-	BluetoothDiscovery(const std::string& deviceName);
+	BluetoothDiscovery(BtDeviceType devType, const std::string& deviceName);
 	virtual ~BluetoothDiscovery();
 
 	bool runDiscovery(ButtplugConfig* config);
 	BtAddress getDiscoveredDevice() const;
 
 protected:
-	virtual bool probeDevice(BtAddress address, const std::string& gapName, wclGattServices& btServices) = 0;
-	virtual void storeAdditionalAttributes(ButtplugConfig* config) = 0;
+	bool probeDevice(BtAddress address, const std::string& gapName, wclGattServices& btServices);
 
 	CwclGattClient _wclGattClient;
 private:
@@ -30,6 +35,7 @@ private:
 
 	void inspectNextDevice();
 
+	const BtDeviceType _deviceType;
 	const std::string _deviceName;
 
 	std::deque<BtAddress> _discoveredDevices;
