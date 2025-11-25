@@ -16,7 +16,7 @@ CoyoteDevice::CoyoteDevice(ButtplugConfig &config) : ButtplugDevice(config), _co
 	_readBatteryAt = 0;
 
 	_stopThread = false;
-	_streamThread = System::CreateThread(CoyoteDevice::streamThreadFunc, this);
+	//_streamThread = System::CreateThread(CoyoteDevice::streamThreadFunc, this);
 }
 
 CoyoteDevice::~CoyoteDevice() {
@@ -62,7 +62,7 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 		if (_expectedSerial == Value[1]) {
 			_confirmedChannelStrength[0] = Value[2];
 			_confirmedChannelStrength[1] = Value[3];
-			_expectedSerial = 0xFF;
+			//_expectedSerial = 0xFF;
 		} else
 			log("Unexpected serial: %02X, expected %02X\n", Value[1], _expectedSerial);
 	} else
@@ -83,9 +83,67 @@ void CoyoteDevice::adjustChannelIntensity(int levelA, int levelB) {
 	_config.toFile();
 }
 
+enum SetChannelStrenthMethod {
+	SCSM_NO_CHANGE = 0,
+	SCSM_INCREASE = 1,
+	SCSM_DECREASE = 2,
+	SCSM_ABSOLUTE = 3
+};
+
+struct ChannelWaveform { // 4x 25ms
+	unsigned char frequency[4]; // 0 ~ 240
+	unsigned char intensity[4]; // 0 ~ 100
+};
+
 void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	_effectiveVibrationPercent = effectiveVibrationPercent;
 	System::SetEvent(_rumbleEvent);
+
+	if (isConnected()) {
+		unsigned char commandBuf[20];
+		commandBuf[0] = 0xB0;
+		commandBuf[1] = commandBuf[2] = commandBuf[3] = 0x00;
+		if ((_levelA != _confirmedChannelStrength[0]) || (_levelB != _confirmedChannelStrength[1])) {
+			_expectedSerial = 1 + (_strengthSerial % 0xF);
+			//_strengthSerial++;
+			_strengthSerial = 0; // Don't need confirmation
+			commandBuf[1] = (_expectedSerial << 4);
+			if (_levelA != _confirmedChannelStrength[0]) {
+				commandBuf[1] |= SCSM_ABSOLUTE << 2;
+				commandBuf[2] = _levelA;
+			}
+			if (_levelB != _confirmedChannelStrength[1]) {
+				commandBuf[1] |= SCSM_ABSOLUTE << 0;
+				commandBuf[3] = _levelB;
+			}
+		}
+
+		ChannelWaveform* aChWaveform = (ChannelWaveform*)(commandBuf + 4);
+		ChannelWaveform* bChWaveform = (ChannelWaveform*)(commandBuf + 12);
+		for (int i = 0; i < 4; i++) {
+			aChWaveform->frequency[i] = 10; // encodeFrequency(100);
+			aChWaveform->intensity[i] = (_levelA * _effectiveVibrationPercent) / 100;
+			bChWaveform->frequency[i] = 10;
+			bChWaveform->intensity[i] = (_levelB * _effectiveVibrationPercent) / 100;
+		}
+		if (_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse) != WCL_E_SUCCESS)
+			disconnect();
+
+		if (_readBatteryAt < System::GetMicros()) {
+			unsigned char* batteryBuffer;
+			unsigned long length;
+			if (_wclGattClient.ReadCharacteristicValue(_batteryCharac, goNone, batteryBuffer, length) == WCL_E_SUCCESS) {
+				if (batteryBuffer) {
+					if (length == 1)
+						_batteryLevel = batteryBuffer[0];
+					else
+						log("Unexpected response to read battery: %s\n", hexString(batteryBuffer, length).c_str());
+					free(batteryBuffer);
+				}
+			}
+			_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
+		}
+	}
 }
 
 void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity) {
@@ -103,13 +161,6 @@ void CoyoteDevice::sendGlobalSettings(unsigned char aChLimit, unsigned char bChL
 	_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 7, plNone, wkWithoutResponse);
 }
 
-enum SetChannelStrenthMethod {
-	SCSM_NO_CHANGE = 0,
-	SCSM_INCREASE = 1,
-	SCSM_DECREASE = 2,
-	SCSM_ABSOLUTE = 3
-};
-
 unsigned char CoyoteDevice::encodeFrequency(unsigned short frequency) const {
 	assert((frequency >= 10) && (frequency <= 1000));
 	if (frequency <= 100)
@@ -122,11 +173,6 @@ unsigned char CoyoteDevice::encodeFrequency(unsigned short frequency) const {
 		return 10;
 }
 
-struct ChannelWaveform { // 4x 25ms
-	unsigned char frequency[4]; // 0 ~ 240
-	unsigned char intensity[4]; // 0 ~ 100
-};
-
 void CoyoteDevice::streamThread() {
 	while (!_stopThread) {
 		if (isConnected()) {
@@ -135,7 +181,8 @@ void CoyoteDevice::streamThread() {
 			commandBuf[1] = commandBuf[2] = commandBuf[3] = 0x00;
 			if ((_levelA != _confirmedChannelStrength[0]) || (_levelB != _confirmedChannelStrength[1])) {
 				_expectedSerial = 1 + (_strengthSerial % 0xF);
-				_strengthSerial++;
+				//_strengthSerial++;
+				_strengthSerial = 0; // Don't need confirmation
 				commandBuf[1] = (_expectedSerial << 4);
 				if (_levelA != _confirmedChannelStrength[0]) {
 					commandBuf[1] |= SCSM_ABSOLUTE << 2;
