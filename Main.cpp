@@ -238,6 +238,7 @@ void SteamPlugMain::run() {
                 physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
                 cycleCount = 0;
             } else {
+				Terminal::clearLine(LINE_PHYSPAD_STATUS);
                 Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s ", (mode == DUALSHOCK) ? "DualShock" : "XBox");
                 if (physicalPadIndex >= 0)
 					printf("#%d     ", physicalPadIndex + 1);
