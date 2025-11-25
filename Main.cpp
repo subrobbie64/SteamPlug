@@ -235,29 +235,25 @@ void SteamPlugMain::run() {
         }
 
         bool physPadIsPresent = (physicalPad != NULL) && !physicalPad->isError();
-        if ((cycleCount == 0) && (!physicalPad || (physPadWasPresent != physPadIsPresent))) {
-            Terminal::clearLine(LINE_PHYSPAD_STATUS);
-            Terminal::printXy(1, LINE_PHYSPAD_STATUS, RED, "Physical gamepad: waiting for controller.");
-            virtualPad.setPhysicalPad(NULL);
-            delete physicalPad;
-            physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
-            cycleCount = 0;
+        if ((cycleCount == 0) || !physicalPad || (physPadWasPresent != physPadIsPresent)) {
+            if (!physicalPad || physicalPad->isError()) {
+                Terminal::printXy(1, LINE_PHYSPAD_STATUS, RED, "Physical gamepad: waiting for controller.");
+                virtualPad.setPhysicalPad(NULL);
+                delete physicalPad;
+                physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
+                cycleCount = 0;
+            } else {
+                char strBuf[8];
+                Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s %s     ", (mode == DUALSHOCK) ? "DualShock" : "XBox", (physicalPadIndex < 0) ? "" : _itoa(physicalPadIndex + 1, strBuf, 10));
+                virtualPad.setPhysicalPad(physicalPad);
+            }
+            Terminal::printXy(1, LINE_VIRTPAD_STATUS, GREEN, "Emulating X360 controller #%d.", virtualPad.getVirtualPadUserIndex() + 1);
         }
         physPadWasPresent = physPadIsPresent;
 
         int rumbleCommands, rumbleLeft, rumbleRight;
         if (virtualPad.getRumbleState(&rumbleCommands, &rumbleLeft, &rumbleRight) || ((cycleCount % 100) == 0))
             printButtplugStatus(rumbleCommands, rumbleLeft, rumbleRight);
-
-        if (cycleCount == 0) {
-            if (physicalPad) {
-                char strBuf[8];
-                Terminal::clearLine(LINE_PHYSPAD_STATUS);
-                Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s %s", (mode == DUALSHOCK) ? "DualShock" : "XBox", (physicalPadIndex < 0) ? "" : _itoa(physicalPadIndex + 1, strBuf, 10));
-                virtualPad.setPhysicalPad(physicalPad);
-            }
-            Terminal::printXy(1, LINE_VIRTPAD_STATUS, GREEN, "Emulating X360 controller #%d.", virtualPad.getVirtualPadUserIndex() + 1);
-        }
 
         if ((cycleCount == 0) || (lastPlugBatteryLevel != _buttplugDevice->getBatteryLevel())) {
             lastPlugBatteryLevel = _buttplugDevice->getBatteryLevel();
