@@ -23,16 +23,8 @@ private:
 	unsigned char encodeFrequency(unsigned short frequency) const;
 	void sendGlobalSettings(unsigned char aChLimit, unsigned char bChLimit, unsigned char aChFreqBalance, unsigned char bChFreqBalance, unsigned char aChFreqIntensity, unsigned char bChFreqIntensity);
 
-	void streamThread();
-	static threadReturn WINAPI streamThreadFunc(void* arg);
-
 	wclGattService _coyoteService, _coyoteBatteryService;
 	wclGattCharacteristic _txCharac, _rxCharac, _batteryCharac;
-
-	sysevent_t _rumbleEvent;
-
-	volatile bool _stopThread;
-	systhread_t _streamThread;
 
 	volatile unsigned char _levelA, _levelB;
 

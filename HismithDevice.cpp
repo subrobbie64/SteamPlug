@@ -101,11 +101,11 @@ const std::map<unsigned short, const char*> HismithDevice::TYPE_MAP = {
 	{ 0x4001, "Auxfun Box" }
 };
 
-const wclGattUuid HismithDevice::INFO_SERVICE_UUID = { true, 0xFF90, { 0x0000ff90, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-const wclGattUuid HismithDevice::INFO_SERVICE_CHARAC_UUID = { true, 0xFF96, { 0x0000ff96, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
+const wclGattUuid HismithDevice::INFO_SERVICE_UUID = { true, 0xFF90, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
+const wclGattUuid HismithDevice::INFO_SERVICE_CHARAC_UUID = { true, 0xFF96, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
 
-const wclGattUuid HismithDevice::TX_SERVICE_UUID = { true, 0xFFE5, { 0x0000ffe5, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-const wclGattUuid HismithDevice::TX_CHARAC_UUID = { true, 0xFFE9, { 0x0000ffe9, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };;
+const wclGattUuid HismithDevice::TX_SERVICE_UUID = { true, 0xFFE5, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
+const wclGattUuid HismithDevice::TX_CHARAC_UUID = { true, 0xFFE9, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
 
-const wclGattUuid HismithDevice::RX_SERVICE_UUID = { true, 0xFFE0, { 0x0000ffe0, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
-const wclGattUuid HismithDevice::RX_CHARAC_UUID = { true, 0xFFE4, { 0x0000ffe4, 0x0000, 0x1000, { 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }} };
+const wclGattUuid HismithDevice::RX_SERVICE_UUID = { true, 0xFFE0, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };
+const wclGattUuid HismithDevice::RX_CHARAC_UUID = { true, 0xFFE4, { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } } };

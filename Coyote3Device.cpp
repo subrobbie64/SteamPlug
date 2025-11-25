@@ -7,21 +7,14 @@
 #pragma warning(disable:6001)
 
 CoyoteDevice::CoyoteDevice(ButtplugConfig &config) : ButtplugDevice(config), _coyoteService(), _coyoteBatteryService(), _rxCharac(), _txCharac(), _batteryCharac() {
-	_rumbleEvent = System::CreateEventFlag();
-	
 	_strengthSerial = 0;
 	_expectedSerial = 0xFF;
 	_confirmedChannelStrength[0] = _confirmedChannelStrength[1] = 0;
 	config.getChannels((unsigned char *)&_levelA, (unsigned char *)&_levelB);
 	_readBatteryAt = 0;
-
-	_stopThread = false;
-	//_streamThread = System::CreateThread(CoyoteDevice::streamThreadFunc, this);
 }
 
 CoyoteDevice::~CoyoteDevice() {
-	_stopThread = true;
-	System::WaitThread(_streamThread);
 }
 
 bool CoyoteDevice::onConnectionEstablished() {
@@ -61,7 +54,6 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 		if (_expectedSerial == Value[1]) {
 			_confirmedChannelStrength[0] = Value[2];
 			_confirmedChannelStrength[1] = Value[3];
-			//_expectedSerial = 0xFF;
 		} else
 			log("Unexpected serial: %02X, expected %02X\n", Value[1], _expectedSerial);
 	} else
@@ -96,7 +88,6 @@ struct ChannelWaveform { // 4x 25ms
 
 void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 	_effectiveVibrationPercent = effectiveVibrationPercent;
-	System::SetEvent(_rumbleEvent);
 
 	if (isConnected()) {
 		unsigned char commandBuf[20];
@@ -170,64 +161,6 @@ unsigned char CoyoteDevice::encodeFrequency(unsigned short frequency) const {
 		return (unsigned char)(frequency - 600) / 10 + 200;
 	else
 		return 10;
-}
-
-void CoyoteDevice::streamThread() {
-	while (!_stopThread) {
-		if (isConnected()) {
-			unsigned char commandBuf[20];
-			commandBuf[0] = 0xB0;
-			commandBuf[1] = commandBuf[2] = commandBuf[3] = 0x00;
-			if ((_levelA != _confirmedChannelStrength[0]) || (_levelB != _confirmedChannelStrength[1])) {
-				_expectedSerial = 1 + (_strengthSerial % 0xF);
-				//_strengthSerial++;
-				_strengthSerial = 0; // Don't need confirmation
-				commandBuf[1] = (_expectedSerial << 4);
-				if (_levelA != _confirmedChannelStrength[0]) {
-					commandBuf[1] |= SCSM_ABSOLUTE << 2;
-					commandBuf[2] = _levelA;
-				}
-				if (_levelB != _confirmedChannelStrength[1]) {
-					commandBuf[1] |= SCSM_ABSOLUTE << 0;
-					commandBuf[3] = _levelB;
-				}
-			}
-
-			ChannelWaveform* aChWaveform = (ChannelWaveform*)(commandBuf + 4);
-			ChannelWaveform* bChWaveform = (ChannelWaveform*)(commandBuf + 12);
-			for (int i = 0; i < 4; i++) {
-				aChWaveform->frequency[i] = 10; // encodeFrequency(100);
-				aChWaveform->intensity[i] = (_levelA * _effectiveVibrationPercent) / 100;
-				bChWaveform->frequency[i] = 10;
-				bChWaveform->intensity[i] = (_levelB * _effectiveVibrationPercent) / 100;
-			}
-			if (_wclGattClient.WriteCharacteristicValue(_txCharac, commandBuf, 20, plNone, wkWithoutResponse) != WCL_E_SUCCESS)
-				disconnect();
-
-			if (_readBatteryAt < System::GetMicros()) {
-				unsigned char* batteryBuffer;
-				unsigned long length;
-				if (_wclGattClient.ReadCharacteristicValue(_batteryCharac, goNone, batteryBuffer, length) == WCL_E_SUCCESS) {
-					if (batteryBuffer) {
-						if (length == 1)
-							_batteryLevel = batteryBuffer[0];
-						else
-							log("Unexpected response to read battery: %s\n", hexString(batteryBuffer, length).c_str());
-						free(batteryBuffer);
-					}
-				}
-				_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
-			}
-		}
-		System::Sleep(100);
-		if (_effectiveVibrationPercent == 0)
-			System::WaitEvent(_rumbleEvent);
-	}
-}
-
-threadReturn WINAPI CoyoteDevice::streamThreadFunc(void* arg) {
-	((CoyoteDevice*)arg)->streamThread();
-	return THREAD_RETURN;
 }
 
 const int CoyoteDevice::CHECK_BATTERY_INTERVAL_MILLIS = 30 * 1000; // 30 seconds
