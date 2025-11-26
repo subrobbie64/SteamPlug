@@ -63,11 +63,9 @@ bool DualPad::getState(XUSB_REPORT* padReport) {
 	bool result = false;
 	System::WaitSema(&_deviceSema);
 	int nBytes = hid_read(_hidDevice, _inputBuffer, HID_BUFFER_SIZE);
-	if (nBytes < 0) {
+	if (nBytes <= 0) {
 		debug("Read from HID device error.\n");
 		_deviceError = true;
-	} else if (nBytes == 0) {
-		debug("No response from HID\n");
 	} else {
 		convertPadState();
 		memcpy(padReport, &_padState.Gamepad, sizeof(XUSB_REPORT));
