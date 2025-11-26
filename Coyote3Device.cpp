@@ -50,6 +50,7 @@ void CoyoteDevice::onClientCharacteristicChanged(const unsigned char* const Valu
 		_status = BT_CONNECTED;
 	} else if ((Length == 4) && (Value[0] == 0x51)) { // Battery status, i.e. 51 00 10 64
 		_batteryLevel = Value[3]; 
+		_readBatteryAt = System::GetMicros() + CHECK_BATTERY_INTERVAL_MILLIS * 1000;
 	} else if ((Length == 4) && (Value[0] == 0xB1)) { // Confirmation of 0xBF, i.e. B1 01 50 50
 		if (_expectedSerial == Value[1]) {
 			_confirmedChannelStrength[0] = Value[2];
@@ -95,7 +96,6 @@ void CoyoteDevice::setVibrate(unsigned char effectiveVibrationPercent) {
 		commandBuf[1] = commandBuf[2] = commandBuf[3] = 0x00;
 		if ((_levelA != _confirmedChannelStrength[0]) || (_levelB != _confirmedChannelStrength[1])) {
 			_expectedSerial = 1 + (_strengthSerial % 0xF);
-			//_strengthSerial++;
 			_strengthSerial = 0; // Don't need confirmation
 			commandBuf[1] = (_expectedSerial << 4);
 			if (_levelA != _confirmedChannelStrength[0]) {

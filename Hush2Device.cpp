@@ -50,7 +50,7 @@ bool HushDevice::onConnectionEstablished() {
 
 bool HushDevice::issueCommand(const char* commandString) {
 	if (System::WaitSema(&_runningCommand, COMMAND_TIMEOUT_MILLIS) == SEMA_TIMEOUT)
-		log("WARN: Timeout waiting for previous command to complete\n");
+		debug("WARN: Timeout waiting for previous command to complete\n");
 	const int Res = _wclGattClient.WriteCharacteristicValue(_txCharac, (const unsigned char*)commandString, (unsigned int)strlen(commandString), plNone, wkWithoutResponse);
 	if (Res == WCL_E_SUCCESS)
 		return true;

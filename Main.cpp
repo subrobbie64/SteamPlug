@@ -212,11 +212,9 @@ void SteamPlugMain::run() {
                     testing = !testing;
                     Terminal::clearScreen();
                     cycleCount = 0;
-                    System::Sleep(50);
                     virtualPad.setRumble(0, 0);
                     System::Sleep(50);
-                }
-                if (keyToAction(key, &adjustLeft, &adjustRight))
+                } else if (keyToAction(key, &adjustLeft, &adjustRight))
                     _buttplugDevice->adjustVibration(adjustLeft, adjustRight);
 #ifdef USE_COYOTE
 				else if (keyToCoyoteAction(key, &adjustLeft, &adjustRight))
