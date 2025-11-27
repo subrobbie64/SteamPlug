@@ -3,51 +3,6 @@
 
 #pragma comment(lib, "ViGEmClient.lib")
 
-#ifdef OOT_HACK
-class EffectThread {
-public:
-	EffectThread(VirtualPad* virtualPad) : _virtualPad(virtualPad), _effectId(0) {
-		_effectEvent = System::CreateEventFlag();
-		_thread = System::CreateThread(&EffectThread::threadFunc, this);
-	}
-	~EffectThread() {
-		System::WaitThread(_thread);
-	}
-	void fire(int id);
-private:
-	VirtualPad* _virtualPad;
-	systhread_t _thread;
-	sysevent_t _effectEvent;
-	int _effectId;
-
-	void thread();
-	static threadReturn WINAPI threadFunc(void* arg);
-};
-
-void EffectThread::thread() {
-	while (true) {
-		System::WaitEvent(_effectEvent);
-		_virtualPad->setRumble(255, 255);
-		System::Sleep(250);
-		_virtualPad->setRumble(0, 0);
-		if (_effectId != 1)
-			System::Sleep(200);
-	}
-}
-
-void EffectThread::fire(int id) {
-	_effectId = id;
-	System::SetEvent(_effectEvent);
-}
-
-threadReturn WINAPI EffectThread::threadFunc(void* arg) {
-	((EffectThread*)arg)->thread();
-	return THREAD_RETURN;
-}
-
-static EffectThread* g_effectThread;
-#endif
-
 VirtualPad::VirtualPad(ButtplugDevice& buttplugDevice)
 	: _client(vigem_alloc()), _outputPad(NULL), _virtualPadPlayerIndex(-1), _buttplugDevice(buttplugDevice), _physicalPad(NULL), _rumbleInstructionCount(0), _padState() {
 	
@@ -77,10 +32,6 @@ VirtualPad::VirtualPad(ButtplugDevice& buttplugDevice)
 
 	System::CreateSema(&_physicalPadSema, 1);
 	System::WaitEvent(_padIdAssigmentEvent);
-
-#ifdef OOT_HACK
-	g_effectThread = new EffectThread(this);
-#endif
 }
 
 VirtualPad::~VirtualPad() {
@@ -117,16 +68,6 @@ void VirtualPad::updateState() {
 	if (gotUpdate || isError) {
 		if (isError)
 			memset(&_padState, 0, sizeof(XUSB_REPORT));
-#ifdef OOT_HACK
-		if (_padState.wButtons & XINPUT_GAMEPAD_START)
-			g_effectThread->fire(0);
-		else if ((_padState.bLeftTrigger >= 0x30) || (_padState.bRightTrigger >= 0x30)) {
-			if (!waitRelease)
-				g_effectThread->fire(1);
-			waitRelease = true;
-		} else
-			waitRelease = false;
-#endif
 		vigem_target_x360_update(_client, _outputPad, _padState);
 	}
 }
