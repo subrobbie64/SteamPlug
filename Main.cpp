@@ -48,7 +48,7 @@ private:
         LINE_VIRTPAD_STATUS = 5,
         LINE_TEST_STATUS = 8,
         LINE_RUMBLE_STATUS = 13,
-        LINE_KEY_HELP = 14,
+        LINE_KEY_HELP = 16,
         LINE_EVENT_STATUS = 17
     };
 
@@ -234,7 +234,8 @@ void SteamPlugMain::run() {
                 virtualPad.setPhysicalPad(NULL);
                 delete physicalPad;
                 physicalPad = openGamePad(&waitPadDetection, &mode, virtualPad, &physicalPadIndex);
-                cycleCount = 0;
+				if (physicalPad)
+                    cycleCount = 0;
             } else {
 				Terminal::clearLine(LINE_PHYSPAD_STATUS);
                 Terminal::printXy(1, LINE_PHYSPAD_STATUS, GREEN, "Physical gamepad: %s ", (mode == DUALSHOCK) ? "DualShock" : "XBox");
@@ -293,8 +294,8 @@ void SteamPlugMain::printVibrationStatus() {
 #ifdef USE_COYOTE
     int coyoteChannelA, coyoteChannelB;
     static_cast<CoyoteDevice*>(_buttplugDevice)->getChannelIntensity(&coyoteChannelA, &coyoteChannelB);
-    Terminal::printXy(_terminalWidth - 40, LINE_KEY_HELP + 0, WHITE, "Ch A/B: \x1B[%02Xm%3d%% / %3d%%", YELLOW, coyoteChannelA, coyoteChannelB);
-    Terminal::printXy(_terminalWidth - 40, LINE_KEY_HELP + 1, WHITE, "Q/A: Ch A, W/S: Ch B");
+    Terminal::printXy(_terminalWidth - 60, LINE_KEY_HELP - 2, WHITE, "Channel A Level: \x1B[%02Xm%3d%%\x1B[%02Xm   /   Channel B Level: \x1B[%02Xm%3d%%", YELLOW, coyoteChannelA, WHITE, YELLOW, coyoteChannelB);
+    Terminal::printXy(_terminalWidth - 60, LINE_KEY_HELP - 1, WHITE, "Ch A: Q/A for up/down       Ch B: W/S for up/down");
 #endif
     int rumbleScaleLeft, rumbleScaleRight;
     _buttplugDevice->getVibrationIntensity(&rumbleScaleLeft, &rumbleScaleRight);
