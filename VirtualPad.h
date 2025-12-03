@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ButtplugDevice.h"
-#include "ButtplugConfig.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <ViGEm/Client.h>

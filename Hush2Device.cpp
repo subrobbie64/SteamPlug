@@ -117,7 +117,7 @@ threadReturn WINAPI HushDevice::retryHandlerFunc(void* arg) {
 
 const int HushDevice::COMMAND_TIMEOUT_MILLIS = 500;
 const int HushDevice::RETRY_DELAY_MILLIS = 50;
-const int HushDevice::CHECK_BATTERY_INTERVAL_MILLIS = 15000; // 15 seconds
+const int HushDevice::CHECK_BATTERY_INTERVAL_MILLIS = 30000; // 30 seconds
 
 const int HushDevice::MAX_VIBRATION_SETTING = 20;
 

@@ -15,11 +15,11 @@
 #pragma warning(disable: 6255)
 
 #ifdef USE_HUSH2
-#define DEVICE_NAME "Buttplug"
+#define DEVICE_NAME "Hush2 Buttplug"
 #elif USE_COYOTE
-#define DEVICE_NAME "Coyote"
+#define DEVICE_NAME "Coyote 3.0"
 #else
-#define DEVICE_NAME "Hismith fuck machine"
+#define DEVICE_NAME "Hismith Fuck Machine"
 #endif
 
 #define PLUG_BATTERY_LEVEL_LOW 20
@@ -62,13 +62,12 @@ private:
     void printPlugBatteryLevel(unsigned char batteryLevel);
     void printPadBatteryLevel(unsigned char batteryLevel);
 
-    bool keyToCoyoteAction(int key, int* adjustLeft, int* adjustRight);
-    bool keyToAction(int key, int* adjustLeft, int* adjustRight);
+    bool keyToCoyoteAction(int key);
+    bool keyToAction(int key);
 
     void atProgramExit();
     static void __cdecl atProgramExitFunc();
 
-    ButtplugConfig* _buttplugConfig;
     ButtplugDevice* _buttplugDevice;
 
     int _terminalWidth, _terminalHeight;
@@ -78,7 +77,7 @@ private:
 
 SteamPlugMain* SteamPlugMain::s_MainInstance = NULL;
 
-SteamPlugMain::SteamPlugMain() : _buttplugConfig(NULL), _buttplugDevice(NULL), _terminalWidth(0), _terminalHeight(0) {
+SteamPlugMain::SteamPlugMain() : _buttplugDevice(NULL), _terminalWidth(0), _terminalHeight(0) {
     s_MainInstance = this;
     atexit(atProgramExitFunc);
 }
@@ -87,19 +86,19 @@ SteamPlugMain::~SteamPlugMain() {
 }
 
 ButtplugDevice* SteamPlugMain::openButtplugDevice() {
-    _buttplugConfig = ButtplugConfig::fromFile();
-    if (!_buttplugConfig->isValid()) {
+    ButtplugConfig* buttplugConfig = ButtplugConfig::fromFile();
+    if (!buttplugConfig->isValid()) {
         log("No " DEVICE_NAME " address found in config, running Discovery!\n");        
 #ifdef USE_HUSH2
-        BluetoothDiscovery deviceDiscovery(BTD_HUSH2, "Hush2 Buttplug");
+        BluetoothDiscovery deviceDiscovery(BTD_HUSH2, DEVICE_NAME);
 #elif USE_COYOTE
-        BluetoothDiscovery deviceDiscovery(BTD_COYOTE3, "Coyote 3.0");
+        BluetoothDiscovery deviceDiscovery(BTD_COYOTE3, DEVICE_NAME);
 #else
-        BluetoothDiscovery deviceDiscovery(BTD_HISMITH, "Hismith Fuck Machine");
+        BluetoothDiscovery deviceDiscovery(BTD_HISMITH, DEVICE_NAME);
 #endif
-        if (!deviceDiscovery.runDiscovery(_buttplugConfig))
+        if (!deviceDiscovery.runDiscovery(buttplugConfig))
             error("No device found!\n");
-        _buttplugConfig->toFile();
+        buttplugConfig->toFile();
 
         Sleep(2000);
         Terminal::clearScreen();
@@ -107,13 +106,13 @@ ButtplugDevice* SteamPlugMain::openButtplugDevice() {
     }
     
     ButtplugDevice* buttplugDevice;
-    log("Trying to connect " DEVICE_NAME " at %s...", BluetoothBase::MacToString(_buttplugConfig->getAddress()).c_str());
+    log("Trying to connect " DEVICE_NAME " at %s...", BluetoothBase::MacToString(buttplugConfig->getAddress()).c_str());
 #ifdef USE_HUSH2
-    buttplugDevice = new HushDevice(*_buttplugConfig);
+    buttplugDevice = new HushDevice(*buttplugConfig);
 #elif USE_COYOTE
-    buttplugDevice = new CoyoteDevice(*_buttplugConfig);
+    buttplugDevice = new CoyoteDevice(*buttplugConfig);
 #else
-    buttplugDevice = new HismithDevice(*_buttplugConfig);
+    buttplugDevice = new HismithDevice(*buttplugConfig);
 #endif
     while (!buttplugDevice->isConnected()) {
         buttplugDevice->connect();
@@ -133,35 +132,35 @@ ButtplugDevice* SteamPlugMain::openButtplugDevice() {
     return buttplugDevice;
 }
 
-bool SteamPlugMain::keyToAction(int key, int* adjustLeft, int* adjustRight) {
-	*adjustLeft = *adjustRight = 0;
+bool SteamPlugMain::keyToAction(int key) {
+	int adjustLeft = 0, adjustRight = 0;
     if (key == 'o')
-        *adjustLeft = RUMBLE_STEP;
+        adjustLeft = RUMBLE_STEP;
     else if (key == 'l')
-        *adjustLeft = -RUMBLE_STEP;
+        adjustLeft = -RUMBLE_STEP;
     else if (key == '+')
-        *adjustRight = RUMBLE_STEP;
+        adjustRight = RUMBLE_STEP;
     else if (key == '-')
-        *adjustRight = -RUMBLE_STEP;
+        adjustRight = -RUMBLE_STEP;
     else
         return false;
-
+    _buttplugDevice->adjustVibration(adjustLeft, adjustRight);
     return true;
 }
 
-bool SteamPlugMain::keyToCoyoteAction(int key, int* adjustLeft, int* adjustRight) {
-    *adjustLeft = *adjustRight = 0;
+bool SteamPlugMain::keyToCoyoteAction(int key) {
+    int adjustLeft = 0, adjustRight = 0;
     if (key == 'q')
-        *adjustLeft = RUMBLE_STEP;
+        adjustLeft = RUMBLE_STEP;
     else if (key == 'a')
-        *adjustLeft = -RUMBLE_STEP;
+        adjustLeft = -RUMBLE_STEP;
     else if (key == 'w')
-        *adjustRight = RUMBLE_STEP;
+        adjustRight = RUMBLE_STEP;
     else if (key == 's')
-        *adjustRight = -RUMBLE_STEP;
+        adjustRight = -RUMBLE_STEP;
     else
         return false;
-
+    static_cast<CoyoteDevice*>(_buttplugDevice)->adjustChannelIntensity(adjustLeft, adjustRight);
     return true;
 }
 
@@ -195,9 +194,16 @@ void SteamPlugMain::run() {
     ControllerMode mode;
     int physicalPadIndex;
     PhysicalPad* physicalPad = NULL;
-	Terminal::clearScreen();
+
+	int lastTerminalWidth = 0, lastTerminalHeight = 0;
     while (true) {
         Terminal::getTerminalSize(&_terminalWidth, &_terminalHeight);
+        if ((lastTerminalWidth != _terminalWidth) || (lastTerminalHeight != _terminalHeight)) {
+            Terminal::clearScreen();
+			cycleCount = 0;
+            lastTerminalWidth = _terminalWidth;
+			lastTerminalHeight = _terminalHeight;
+        }
 
         if (!_buttplugDevice->isConnected())
 			_buttplugDevice->connect();
@@ -214,12 +220,12 @@ void SteamPlugMain::run() {
                     cycleCount = 0;
                     virtualPad.setRumble(0, 0);
                     System::Sleep(50);
-                } else if (keyToAction(key, &adjustLeft, &adjustRight))
-                    _buttplugDevice->adjustVibration(adjustLeft, adjustRight);
+                } else {
+                    keyToAction(key);
 #ifdef USE_COYOTE
-				else if (keyToCoyoteAction(key, &adjustLeft, &adjustRight))
-                    static_cast<CoyoteDevice*>(_buttplugDevice)->adjustChannelIntensity(adjustLeft, adjustRight);
+                    keyToCoyoteAction(key);
 #endif
+                }
                 printVibrationStatus();
             }
         }
@@ -356,6 +362,7 @@ void SteamPlugMain::atProgramExit() {
         _buttplugDevice->setGamepadVibration(0, 0);
         System::Sleep(250);
     }
+	Terminal::setTerminalCursorVisibility(true);
 }
 
 void __cdecl SteamPlugMain::atProgramExitFunc() {

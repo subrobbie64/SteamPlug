@@ -228,7 +228,7 @@ void DualShockPad::convertPadState() {
 DualSensePad::DualSensePad(unsigned short vendorId, unsigned short productId, const wchar_t* serial) : DualPad(vendorId, productId, serial), _outputSeq(1) {
 	int nBytes = readHidWithRetries(_inputBuffer, HID_BUFFER_SIZE);
 	if (nBytes > 0) {
-		_isBluetooth = (_inputBuffer[0] == 0x1F);
+		_isBluetooth = (nBytes > 0x40);
 		setRumbleColor(0, 0, 0xFF0000);
 		System::Sleep(800);
 		setRumbleColor(0xFF, 0xFF, 0xFF0000);
@@ -301,14 +301,10 @@ void DualSensePad::setRumbleColor(unsigned char largeRumble, unsigned char small
 }
 
 void DualSensePad::convertPadState() {
-	log("DualSensePad::convertPadState\n");
-	if (_isBluetooth) {
-		log("WARN: Bluetooth path taken!\n");
-		convertPadStateBluetooth01();
-	} else {
-		log("USB path taken with report = %02X!\n", _inputBuffer[0]);
-		convertPadStateUsb01();
-	}
+	if (_isBluetooth)
+		convertPadStateBluetooth01(); // Also USB HID report 0x01
+	else 
+		convertPadStateUsb01(); // USB HID report 0x01
 }
 
 void DualSensePad::convertPadStateUsb01() {
@@ -330,7 +326,7 @@ void DualSensePad::convertPadStateUsb01() {
 }
 
 void DualSensePad::convertPadStateBluetooth01() {
-	const DS5RawStateBluetooth01* inState = (DS5RawStateBluetooth01*)(_inputBuffer + 3);
+	const DS5RawStateBluetooth01* inState = (DS5RawStateBluetooth01*)(_inputBuffer + 1);
 
 	_padState.Gamepad.wButtons = mapButtons(inState->buttonDpad, inState->moreButtons);
 
