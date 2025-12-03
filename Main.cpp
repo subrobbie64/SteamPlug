@@ -213,7 +213,6 @@ void SteamPlugMain::run() {
         if ((cycleCount % 5) == 0) {
             if (_kbhit() || (cycleCount == 0)) {
 				int key = _kbhit() ? _getch() : 0;
-                int adjustLeft, adjustRight;
                 if (key == 't') {
                     testing = !testing;
                     Terminal::clearScreen();

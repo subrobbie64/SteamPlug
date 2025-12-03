@@ -236,6 +236,12 @@ DualSensePad::DualSensePad(unsigned short vendorId, unsigned short productId, co
 		setRumbleColor(0, 0, 0);
 	} else
 		log("No response from HID\n");
+
+	if (_isBluetooth) {
+		// Read initial feature report to enable full reports, makes pad output 0x31 reports instead of 0x01
+		_inputBuffer[0] = 0x20; // feature report id
+		nBytes = hid_get_feature_report(_hidDevice, _inputBuffer, HID_BUFFER_SIZE);
+	}
 }
 
 // Trigger effect, 0x26 = mode2 + mode4 + mode20
@@ -301,9 +307,12 @@ void DualSensePad::setRumbleColor(unsigned char largeRumble, unsigned char small
 }
 
 void DualSensePad::convertPadState() {
-	if (_isBluetooth)
-		convertPadStateBluetooth01(); // Also USB HID report 0x01
-	else 
+	if (_isBluetooth) {
+		if (_inputBuffer[0] == 0x31)
+			convertPadStateBluetooth31();
+		else
+			convertPadStateBluetooth01(); // Also USB HID report 0x01
+	} else
 		convertPadStateUsb01(); // USB HID report 0x01
 }
 
@@ -338,4 +347,19 @@ void DualSensePad::convertPadStateBluetooth01() {
 	_padState.Gamepad.sThumbRY = translateAnalogAxis(~inState->rightY);
 
 	_batteryState = 0;
+}
+
+void DualSensePad::convertPadStateBluetooth31() {
+	const DS5RawState* inState = (DS5RawState*)(_inputBuffer + 2);
+	_padState.Gamepad.wButtons = mapButtons(inState->buttonDpad, inState->moreButtons);
+	_padState.Gamepad.bLeftTrigger = inState->leftTrigger;
+	_padState.Gamepad.bRightTrigger = inState->rightTrigger;
+	_padState.Gamepad.sThumbLX = translateAnalogAxis(inState->leftX);
+	_padState.Gamepad.sThumbLY = translateAnalogAxis(~inState->leftY);
+	_padState.Gamepad.sThumbRX = translateAnalogAxis(inState->rightX);
+	_padState.Gamepad.sThumbRY = translateAnalogAxis(~inState->rightY);
+	if (inState->battery[1] & 0x08) // Charging bit
+		_batteryState = 0xFF;
+	else
+		_batteryState = std::clamp(((inState->battery[0] & 0x0F) * 100) / 8, 0, 100);
 }

@@ -59,6 +59,7 @@ protected:
 private:
 	void convertPadStateUsb01();
 	void convertPadStateBluetooth01();
+	void convertPadStateBluetooth31();
 
 	unsigned char _outputSeq;
 };
